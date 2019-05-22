@@ -10,7 +10,12 @@ import config
 import data
 import utils
 from resnet import resnet as caffe_resnet
+import argparse
+import ipdb
 
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--split', required=True, type=str)  ### train2014/val2014/test2015/edit_val2014
 
 class Net(nn.Module):
     def __init__(self):
@@ -40,13 +45,28 @@ def create_coco_loader(*paths):
     return data_loader
 
 
-def main():
+def main(args):  # main(args):
+
     cudnn.benchmark = True
 
     net = Net().cuda()
     net.eval()
 
-    loader = create_coco_loader(config.train_path, config.val_path)
+
+    if args.split == 'train2014':                                   ## edited to handle different splits - user can give the command now
+        loader_path = config.train_path
+        dump_path = config.preprocessed_train_path
+    if args.split == 'val2014':
+        loader_path = config.val_path
+        dump_path = config.preprocessed_val_path
+    if args.split == 'test2015':
+        loader_path = config.test_path
+        dump_path = config.preprocessed_test_path
+    if args.split == 'edit_val2014':
+        loader_path = config.edit_val_path
+        dump_path = config.preprocessed_edit_val_path
+
+    loader = create_coco_loader(loader_path)    #(loader_path)
     features_shape = (
         len(loader.dataset),
         config.output_features,
@@ -54,14 +74,16 @@ def main():
         config.output_size
     )
 
-    with h5py.File(config.preprocessed_path, libver='latest') as fd:
+    with h5py.File(dump_path, libver='latest') as fd:    ##(dump_path,..)
         features = fd.create_dataset('features', shape=features_shape, dtype='float16')
         coco_ids = fd.create_dataset('ids', shape=(len(loader.dataset),), dtype='int32')
 
         i = j = 0
         for ids, imgs in tqdm(loader):
-            imgs = Variable(imgs.cuda(async=True), volatile=True)
-            out = net(imgs)
+            #imgs = Variable(imgs.cuda(async=True), volatile=True)
+            imgs = Variable(imgs.cuda(async=True))
+            with torch.no_grad():
+                out = net(imgs)
 
             j = i + imgs.size(0)
             features[i:j, :, :] = out.data.cpu().numpy().astype('float16')
@@ -70,4 +92,5 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    args = parser.parse_args()
+    main(args)

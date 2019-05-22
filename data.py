@@ -19,7 +19,7 @@ def get_loader(train=False, val=False, test=False):
     split = VQA(
         utils.path_for(train=train, val=val, test=test, question=True),
         utils.path_for(train=train, val=val, test=test, answer=True),
-        config.preprocessed_path,
+        config.preprocessed_path,     ## make changed here- for training on other...
         answerable_only=train,
     )
     loader = torch.utils.data.DataLoader(
@@ -65,7 +65,7 @@ class VQA(data.Dataset):
         # v
         self.image_features_path = image_features_path
         self.coco_id_to_index = self._create_coco_id_to_index()
-        self.coco_ids = [q['image_id'] for q in questions_json['questions']]
+        self.coco_ids = [q['image_id'] for q in questions_json['questions']]         ### so image_id retrieved from json files
 
         # only use questions that have at least one answer?
         self.answerable_only = answerable_only
@@ -180,7 +180,7 @@ def prepare_questions(questions_json):
 
 
 def prepare_answers(answers_json):
-    """ Normalize answers from a given answer json in the usual VQA format. """
+    """ Normalize answers from a given answer json in the usual VQA format. """       #TODO normalize answers he mentioined in github README
     answers = [[a['answer'] for a in ans_dict['answers']] for ans_dict in answers_json['annotations']]
     # The only normalization that is applied to both machine generated answers as well as
     # ground truth answers is replacing most punctuation with space (see [0] and [1]).

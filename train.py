@@ -1,5 +1,6 @@
 import sys
 import os.path
+import os
 import math
 import json
 
@@ -14,7 +15,8 @@ import config
 import data
 import model
 import utils
-
+import ipdb
+import time
 
 def update_learning_rate(optimizer, iteration):
     lr = config.initial_lr * 0.5**(float(iteration) / config.lr_halflife)
@@ -72,8 +74,8 @@ def run(net, loader, optimizer, tracker, train=False, prefix='', epoch=0):
             answ.append(answer.view(-1))
             accs.append(acc.view(-1))
             idxs.append(idx.view(-1).clone())
-
-        loss_tracker.append(loss.data[0])
+        #ipdb.set_trace()
+        loss_tracker.append(loss.item())    #data[0])
         # acc_tracker.append(acc.mean())
         for a in acc:
             acc_tracker.append(a.item())
@@ -88,18 +90,22 @@ def run(net, loader, optimizer, tracker, train=False, prefix='', epoch=0):
 
 
 def main():
+    start_time = time.time()
     if len(sys.argv) > 1:
         name = ' '.join(sys.argv[1:])
     else:
         from datetime import datetime
         name = datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
     target_name = os.path.join('logs', '{}.pth'.format(name))
+    os.makedirs(target_name, exist_ok=True)
+    
     print('will save to {}'.format(target_name))
 
     cudnn.benchmark = True
 
     train_loader = data.get_loader(train=True)
     val_loader = data.get_loader(val=True)
+    #test_loader = data.get_loader(test=True)
 
     net = nn.DataParallel(model.Net(train_loader.dataset.num_tokens)).cuda()
     optimizer = optim.Adam([p for p in net.parameters() if p.requires_grad])
@@ -110,7 +116,7 @@ def main():
     for i in range(config.epochs):
         _ = run(net, train_loader, optimizer, tracker, train=True, prefix='train', epoch=i)
         r = run(net, val_loader, optimizer, tracker, train=False, prefix='val', epoch=i)
-
+        #r = run(net, test_loader, optimizer, tracker, train=False, prefix='test', epoch=i)
         results = {
             'name': name,
             'tracker': tracker.to_dict(),
@@ -124,7 +130,7 @@ def main():
             'vocab': train_loader.dataset.vocab,
         }
         torch.save(results, target_name)
-
+    print('time_taken:', time.time() - start_time)
 
 if __name__ == '__main__':
     main()

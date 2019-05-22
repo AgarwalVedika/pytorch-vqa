@@ -43,7 +43,7 @@ def batch_accuracy(predicted, true):
 def path_for(train=False, val=False, test=False, question=False, answer=False):
     assert train + val + test == 1
     assert question + answer == 1
-    assert not (test and answer), 'loading answers from test split not supported'  # if you want to eval on test, you need to implement loading of a VQA Dataset without given answers yourself
+    assert not (test and answer), 'loading answers from test split not supported'  #TODO if you want to eval on test, you need to implement loading of a VQA Dataset without given answers yourself
     if train:
         split = 'train2014'
     elif val:
@@ -51,10 +51,10 @@ def path_for(train=False, val=False, test=False, question=False, answer=False):
     else:
         split = 'test2015'
     if question:
-        fmt = '{0}_{1}_{2}_questions.json'
+        fmt = '{3}_{0}_{1}_{2}_questions.json'
     else:
-        fmt = '{1}_{2}_annotations.json'
-    s = fmt.format(config.task, config.dataset, split)
+        fmt = '{3}_{1}_{2}_annotations.json'
+    s = fmt.format(config.task, config.dataset, split, config.dset)
     return os.path.join(config.qa_path, s)
 
 
@@ -128,7 +128,7 @@ class Tracker:
 
 def get_transform(target_size, central_fraction=1.0):
     return transforms.Compose([
-        transforms.Scale(int(target_size / central_fraction)),
+        transforms.Resize(int(target_size / central_fraction)),   ### changed transfrms.Scale to transforms.Resize as the former is deprecated
         transforms.CenterCrop(target_size),
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406],
