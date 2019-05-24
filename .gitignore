@@ -5,4 +5,7 @@ preprocessed_data/
 resnet/
 mscoco
 edit_mscoco
+logs/
+models/
+val_pkl_analysis.py
 .idea/

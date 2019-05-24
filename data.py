@@ -11,7 +11,7 @@ import torchvision.transforms as transforms
 
 import config
 import utils
-
+import ipdb
 
 def get_loader(train=False, val=False, test=False):
     """ Returns a data loader for the desired split """
@@ -20,12 +20,12 @@ def get_loader(train=False, val=False, test=False):
         utils.path_for(train=train, val=val, test=test, question=True),
         utils.path_for(train=train, val=val, test=test, answer=True),
         config.preprocessed_path,     ## make changed here- for training on other...
-        answerable_only=train,
+        answerable_only=train
     )
     loader = torch.utils.data.DataLoader(
         split,
         batch_size=config.batch_size,
-        shuffle=train,  # only shuffle the data in training
+        shuffle=train,  # only shuffle the data in training #TODO vedika comment- good idea!
         pin_memory=True,
         num_workers=config.data_workers,
         collate_fn=collate_fn,
@@ -67,6 +67,7 @@ class VQA(data.Dataset):
         self.coco_id_to_index = self._create_coco_id_to_index()
         self.coco_ids = [q['image_id'] for q in questions_json['questions']]         ### so image_id retrieved from json files
 
+
         # only use questions that have at least one answer?
         self.answerable_only = answerable_only
         if self.answerable_only:
@@ -86,6 +87,7 @@ class VQA(data.Dataset):
         """ Create a mapping from a COCO image id into the corresponding index into the h5 file """
         with h5py.File(self.image_features_path, 'r') as features_file:
             coco_ids = features_file['ids'][()]
+        ###.set_trace() ### in _create_coco_od to index
         coco_id_to_index = {id: i for i, id in enumerate(coco_ids)}
         return coco_id_to_index
 
@@ -94,8 +96,9 @@ class VQA(data.Dataset):
         qa_pairs = list(zip(questions['questions'], answers['annotations']))
         assert all(q['question_id'] == a['question_id'] for q, a in qa_pairs), 'Questions not aligned with answers'
         assert all(q['image_id'] == a['image_id'] for q, a in qa_pairs), 'Image id of question and answer don\'t match'
-        assert questions['data_type'] == answers['data_type'], 'Mismatched data types'
-        assert questions['data_subtype'] == answers['data_subtype'], 'Mismatched data subtypes'
+        #ipdb.set_trace()
+        #assert questions['data_type'] == answers['data_type'], 'Mismatched data types'
+        #assert questions['data_subtype'] == answers['data_subtype'], 'Mismatched data subtypes'
 
     def _find_answerable(self):
         """ Create a list of indices into questions that will have at least one answer that is in the vocab """
@@ -145,19 +148,22 @@ class VQA(data.Dataset):
             item = self.answerable[item]
 
         q, q_length = self.questions[item]
+
+
         a = self.answers[item]
         image_id = self.coco_ids[item]
+        print(image_id)
         v = self._load_image(image_id)
         # since batches are re-ordered for PackedSequence's, the original question order is lost
         # we return `item` so that the order of (v, q, a) triples can be restored if desired
         # without shuffling in the dataloader, these will be in the order that they appear in the q and a json's.
-        return v, q, a, item, q_length
+        return v, q, a, item, q_length    ############### appending the last two things- vedika!!
 
     def __len__(self):
         if self.answerable_only:
-            return len(self.answerable)
+            return len(self.answerable[0:10])   ### TODO vedika just dealing with 10
         else:
-            return len(self.questions)
+            return len(self.questions[0:10])  ### TODO vedika just dealing with 10
 
 
 # this is used for normalizing questions
@@ -220,13 +226,20 @@ class CocoImages(data.Dataset):
         for filename in os.listdir(self.path):
             if not filename.endswith('.jpg'):
                 continue
-            id_and_extension = filename.split('_')[-1]
-            id = int(id_and_extension.split('.')[0])
-            id_to_filename[id] = filename
+            #ipdb.set_trace()
+            if filename.split('_')[2] == filename.split('_')[-1]:   ## in case of original set this holds!
+                id_and_extension = filename.split('_')[-1]
+                id = int(id_and_extension.split('.')[0])
+            else:
+                id_and_extension = filename.split('_')[-2] + '_' + filename.split('_')[-1]   ### to handle edited dataset
+                id = id_and_extension.split('.')[0]          #TODO vedika_change made  # 000000177529_000000000062
+            #ipdb.set_trace()
+            id_to_filename[id] = filename     # {'000000177529_000000000062': 'COCO_val2014_000000177529_000000000062.jpg'}
         return id_to_filename
 
     def __getitem__(self, item):
-        id = self.sorted_ids[item]
+        id = self.sorted_ids[item]   ### sorts it here -_-
+
         path = os.path.join(self.path, self.id_to_filename[id])
         img = Image.open(path).convert('RGB')
 
@@ -235,7 +248,7 @@ class CocoImages(data.Dataset):
         return id, img
 
     def __len__(self):
-        return len(self.sorted_ids)
+        return len(self.sorted_ids)   #### TODO Vedika just pass 10 images here to check what is happening
 
 
 class Composite(data.Dataset):
