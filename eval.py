@@ -77,7 +77,7 @@ def main():
     cudnn.benchmark = True
     output_qids_answers = []
     val_loader = data.get_loader(val=True)            ## data shuffled only in train, so in order here
-    ipdb.set_trace()  ##  val_loader.VQA.__getitem__(116591)[0]  print the largest coco_id - this is within torch int64 bound!
+    #ipdb.set_trace()  ##  val_loader
     #test_loader = data.get_loader(test=True)
 
 

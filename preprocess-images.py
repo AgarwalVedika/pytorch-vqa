@@ -80,7 +80,7 @@ def main(args):  # main(args):
     with h5py.File(dump_path, libver='latest') as fd:    ##(with h5py.File(config.preprocessed_path, libver='latest') as fd:
         features = fd.create_dataset('features', shape=features_shape, dtype='float16')
         if args.edit_set == True:
-            coco_ids = fd.create_dataset('ids', shape=(len(loader.dataset),), dtype="S25")    ###  dtype changed to dtype='|S25' TODO vedika changed int32 dtype to int
+            coco_ids = fd.create_dataset('ids', shape=(len(loader.dataset),), dtype="S25")    ## TODO handling edit set fix for string image ids
         else:
             coco_ids = fd.create_dataset('ids', shape=(len(loader.dataset),), dtype='int32')
 
@@ -93,9 +93,9 @@ def main(args):  # main(args):
 
             j = i + imgs.size(0)
             features[i:j, :, :] = out.data.cpu().numpy().astype('float16')
-            #ipdb.set_trace()
+            ipdb.set_trace()
             if args.edit_set == True:
-                coco_ids[i:j] = numpy.string_(ids)# .numpy().astype('int')       ####TODO vedika  for edit set this is it  # for numpy.string_ dtype='|S25'
+                coco_ids[i:j] = numpy.string_(ids)        ####TODO vedika  for edit set this is it  # for numpy.string_ dtype='S25'
             else:
                 coco_ids[i:j] = ids.numpy().astype('int')  # ### TODO vedika made it iimage_id) : for future purpose- maybe a good idea to id edited images as int and not str
             i = j

@@ -12,6 +12,7 @@ import torchvision.transforms as transforms
 import config
 import utils
 import ipdb
+import numpy as np
 
 def get_loader(train=False, val=False, test=False):
     """ Returns a data loader for the desired split """
@@ -66,7 +67,7 @@ class VQA(data.Dataset):
         self.image_features_path = image_features_path
         self.coco_id_to_index = self._create_coco_id_to_index()
         self.coco_ids = [q['image_id'] for q in questions_json['questions']]         ### so image_id retrieved from json files
-
+        #print('coco_ids from json files', self.coco_ids)
 
         # only use questions that have at least one answer?
         self.answerable_only = answerable_only
@@ -87,8 +88,11 @@ class VQA(data.Dataset):
         """ Create a mapping from a COCO image id into the corresponding index into the h5 file """
         with h5py.File(self.image_features_path, 'r') as features_file:
             coco_ids = features_file['ids'][()]
+        #ipdb.set_trace()
         ###.set_trace() ### in _create_coco_od to index
         coco_id_to_index = {id: i for i, id in enumerate(coco_ids)}
+        #print( 'coco_ids from features file', coco_ids)
+        #print(coco_id_to_index)
         return coco_id_to_index
 
     def _check_integrity(self, questions, answers):
@@ -137,7 +141,14 @@ class VQA(data.Dataset):
             # forks for multiple works, every child would use the same file object and fail
             # Having multiple readers using different file objects is fine though, so we just init in here.
             self.features_file = h5py.File(self.image_features_path, 'r')
-        index = self.coco_id_to_index[image_id]
+        #print(np.where(self.coco_id_to_index.keys() == np.string_(image_id)))
+        #print('type of image_id ',  type(image_id))                                    # type of image_id  <class 'str'>
+        #print('type of image_id ',  type(np.string_(image_id)))                        # type of image_id  <class 'numpy.bytes_'>
+        #print('type of image_id ',  type(np.string_(image_id).astype(np.bytes_)))      # type of image_id  <class 'numpy.bytes_'>
+        if len(str(image_id)) == 25:                                    # TODO vedika dataset handling fix
+            index = self.coco_id_to_index[np.string_(image_id)]   ### handing of edited set
+        else:
+            index = self.coco_id_to_index[image_id]
         dataset = self.features_file['features']
         img = dataset[index].astype('float32')
         return torch.from_numpy(img)
@@ -152,7 +163,7 @@ class VQA(data.Dataset):
 
         a = self.answers[item]
         image_id = self.coco_ids[item]
-        print(image_id)
+        #print(image_id)
         v = self._load_image(image_id)
         # since batches are re-ordered for PackedSequence's, the original question order is lost
         # we return `item` so that the order of (v, q, a) triples can be restored if desired
@@ -161,9 +172,9 @@ class VQA(data.Dataset):
 
     def __len__(self):
         if self.answerable_only:
-            return len(self.answerable[0:10])   ### TODO vedika just dealing with 10
+            return len(self.answerable)   ### TODO vedika just dealing with 10
         else:
-            return len(self.questions[0:10])  ### TODO vedika just dealing with 10
+            return len(self.questions)  ### TODO vedika just dealing with 10
 
 
 # this is used for normalizing questions
@@ -227,8 +238,8 @@ class CocoImages(data.Dataset):
             if not filename.endswith('.jpg'):
                 continue
             #ipdb.set_trace()
-            if filename.split('_')[2] == filename.split('_')[-1]:   ## in case of original set this holds!
-                id_and_extension = filename.split('_')[-1]
+            if filename.split('_')[2] == filename.split('_')[-1]:  # TODO vedika dataset handling fix  ## in case of original set this holds!
+                id_and_extension = filename.split('_')[-1]     # TODO vedika check if len(str(image_id)) == 25:
                 id = int(id_and_extension.split('.')[0])
             else:
                 id_and_extension = filename.split('_')[-2] + '_' + filename.split('_')[-1]   ### to handle edited dataset
@@ -248,7 +259,7 @@ class CocoImages(data.Dataset):
         return id, img
 
     def __len__(self):
-        return len(self.sorted_ids)   #### TODO Vedika just pass 10 images here to check what is happening
+        return len(self.sorted_ids)   ####self.sorted_ids[0:10]  TODO Vedika just pass 10 images here to check what is happening
 
 
 class Composite(data.Dataset):

@@ -1,5 +1,5 @@
-# ** config_orig_vqa **
-# paths
+# # ** config_orig_vqa **
+# # paths
 qa_path = 'vqa'  # directory containing the question and annotation jsons
 
 train_path = './mscoco/train2014'  # directory of training images
@@ -22,9 +22,9 @@ results_no_attn_pkl = './logs/val_no_attn_.pkl'
 ## val1.pth- has  ans_id, ss_vc
 
 
-#########################edited_vqa_
-# ** config_edit_vqa **
-# paths
+# ########################edited_vqa_
+# ##** config_edit_vqa **
+# #paths
 # qa_path = 'edit_vqa'  # directory containing the question and annotation jsons
 #
 # train_path = './edit_mscoco/train2014'  # directory of training images
@@ -33,7 +33,7 @@ results_no_attn_pkl = './logs/val_no_attn_.pkl'
 #
 # preprocessed_path = './preprocessed_data/edit_valset.h5'           ##edit_resnet-14x14.h5'   ### train + val + test
 # preprocessed_train_path = './preprocessed_data/edit_trainset.h5'  # path where preprocessed features are saved to and loaded from
-# preprocessed_val_path = './preprocessed_data/edit_valset.h5'  # path where preprocessed features are saved to and loaded from
+# preprocessed_val_path = './preprocessed_data/edit_valset2.h5'  # path where preprocessed features are saved to and loaded from
 # preprocessed_test_path = './preprocessed_data/edit_testset.h5'  # path where preprocessed features are saved to and loaded from
 #
 # ##eval.py
@@ -42,7 +42,7 @@ results_no_attn_pkl = './logs/val_no_attn_.pkl'
 # results_no_attn_pth = './logs/edit_val_no_attn_.pth'
 # results_no_attn_pkl = './logs/edit_val_no_attn_.pkl'
 # #########################edited_vqa_
-# # ** config_edit_vqa **
+# ## ** config_edit_vqa **
 
 
 
