@@ -26,7 +26,7 @@ def get_loader(train=False, val=False, test=False):
     loader = torch.utils.data.DataLoader(
         split,
         batch_size=config.batch_size,
-        shuffle=train,  # only shuffle the data in training #TODO vedika comment- good idea!
+        shuffle=train, #train,  # only shuffle the data in training #TODO vedika comment- good idea!
         pin_memory=True,
         num_workers=config.data_workers,
         collate_fn=collate_fn,
@@ -67,6 +67,7 @@ class VQA(data.Dataset):
         self.image_features_path = image_features_path
         self.coco_id_to_index = self._create_coco_id_to_index()
         self.coco_ids = [q['image_id'] for q in questions_json['questions']]         ### so image_id retrieved from json files
+        self.ques_ids = [q['question_id'] for q in questions_json['questions']]
         #print('coco_ids from json files', self.coco_ids)
 
         # only use questions that have at least one answer?
@@ -82,7 +83,7 @@ class VQA(data.Dataset):
 
     @property
     def num_tokens(self):
-        return len(self.token_to_index) + 1  # add 1 for <unknown> token at index 0
+        return len(self.token_to_index) + 1  # add 1 for <unknown> token at index 0   #TODO vedika where does this come from <unk> token at index-0
 
     def _create_coco_id_to_index(self):
         """ Create a mapping from a COCO image id into the corresponding index into the h5 file """
@@ -154,7 +155,7 @@ class VQA(data.Dataset):
         return torch.from_numpy(img)
 
     def __getitem__(self, item):
-        if self.answerable_only:
+        if self.answerable_only:                            #TODO vedika MAJOR fix- change this when training!!!
             # change of indices to only address answerable questions
             item = self.answerable[item]
 
@@ -163,12 +164,13 @@ class VQA(data.Dataset):
 
         a = self.answers[item]
         image_id = self.coco_ids[item]
+        ques_id = self.ques_ids[item]
         #print(image_id)
         v = self._load_image(image_id)
         # since batches are re-ordered for PackedSequence's, the original question order is lost
         # we return `item` so that the order of (v, q, a) triples can be restored if desired
         # without shuffling in the dataloader, these will be in the order that they appear in the q and a json's.
-        return v, q, a, item, q_length    ############### appending the last two things- vedika!!
+        return v, q, a, item, image_id, ques_id, q_length    ############### appending the last two things- vedika!!
 
     def __len__(self):
         if self.answerable_only:
@@ -228,7 +230,7 @@ class CocoImages(data.Dataset):
         super(CocoImages, self).__init__()
         self.path = path
         self.id_to_filename = self._find_images()
-        self.sorted_ids = sorted(self.id_to_filename.keys())  # used for deterministic iteration order
+        self.sorted_ids =  sorted(self.id_to_filename.keys())  # used for deterministic iteration order
         print('found {} images in {}'.format(len(self), self.path))
         self.transform = transform
 
@@ -248,8 +250,8 @@ class CocoImages(data.Dataset):
             id_to_filename[id] = filename     # {'000000177529_000000000062': 'COCO_val2014_000000177529_000000000062.jpg'}
         return id_to_filename
 
-    def __getitem__(self, item):
-        id = self.sorted_ids[item]   ### sorts it here -_-
+    def __getitem__(self, id):#item):
+        #id = self.sorted_ids[item]   ### sorts it here -_- TODO vedika line 233 in class CocoImages-changed it myself
 
         path = os.path.join(self.path, self.id_to_filename[id])
         img = Image.open(path).convert('RGB')

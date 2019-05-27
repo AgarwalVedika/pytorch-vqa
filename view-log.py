@@ -1,6 +1,6 @@
 import sys
 import torch
-import matplotlib; matplotlib.use('agg')
+import matplotlib; matplotlib #.use('agg')
 import matplotlib.pyplot as plt
 import config
 import ipdb
@@ -9,9 +9,6 @@ def main():
 
     res_val  = torch.load(config.val_path)
     acc = res_val['accuracies']
-    for i in acc:
-
-
 
     ipdb.set_trace()
 

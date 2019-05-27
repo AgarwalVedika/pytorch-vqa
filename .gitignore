@@ -6,6 +6,7 @@ resnet/
 mscoco
 edit_mscoco
 logs/
+logs1/
 models/
 val_pkl_analysis.py
 .idea/

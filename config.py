@@ -1,5 +1,5 @@
-# # ** config_orig_vqa **
-# # paths
+# ** config_orig_vqa **
+# paths
 qa_path = 'vqa'  # directory containing the question and annotation jsons
 
 train_path = './mscoco/train2014'  # directory of training images
@@ -11,19 +11,14 @@ preprocessed_train_path = './preprocessed_data/trainset.h5'  # path where prepro
 preprocessed_val_path = './preprocessed_data/valset.h5'  # path where preprocessed features are saved to and loaded from
 preprocessed_test_path = './preprocessed_data/testset.h5'  # path where preprocessed features are saved to and loaded from
 
-
-
 ##eval.py
 results_with_attn_pth = './logs/val_with_attn_.pth'
-results_with_attn_pkl = './logs/val_with_attn_.pkl'
+results_with_attn_pkl = './logs/val_with_attn_.pickle'
 results_no_attn_pth = './logs/val_no_attn_.pth'
-results_no_attn_pkl = './logs/val_no_attn_.pkl'
-## val.pth has initials accuracues, answers and all
-## val1.pth- has  ans_id, ss_vc
+results_no_attn_pkl = './logs/val_no_attn_.pickle'
 
-
-# ########################edited_vqa_
-# ##** config_edit_vqa **
+########################edited_vqa_
+# # # #** config_edit_vqa **
 # #paths
 # qa_path = 'edit_vqa'  # directory containing the question and annotation jsons
 #
@@ -33,18 +28,16 @@ results_no_attn_pkl = './logs/val_no_attn_.pkl'
 #
 # preprocessed_path = './preprocessed_data/edit_valset.h5'           ##edit_resnet-14x14.h5'   ### train + val + test
 # preprocessed_train_path = './preprocessed_data/edit_trainset.h5'  # path where preprocessed features are saved to and loaded from
-# preprocessed_val_path = './preprocessed_data/edit_valset2.h5'  # path where preprocessed features are saved to and loaded from
+# preprocessed_val_path = './preprocessed_data/edit_valset.h5'  # path where preprocessed features are saved to and loaded from
 # preprocessed_test_path = './preprocessed_data/edit_testset.h5'  # path where preprocessed features are saved to and loaded from
 #
 # ##eval.py
 # results_with_attn_pth = './logs/edit_val_with_attn_.pth'
-# results_with_attn_pkl = './logs/edit_val_with_attn_.pkl'
+# results_with_attn_pkl = './logs/edit_val_with_attn_.pickle'
 # results_no_attn_pth = './logs/edit_val_no_attn_.pth'
-# results_no_attn_pkl = './logs/edit_val_no_attn_.pkl'
+# results_no_attn_pkl = './logs/edit_val_no_attn_.pickle'
 # #########################edited_vqa_
 # ## ** config_edit_vqa **
-
-
 
 #train.path
 model_path_no_attn = './models/no_attn.pth'
@@ -65,7 +58,7 @@ central_fraction = 0.875  # only take this much of the centre when scaling and c
 
 # training config
 epochs = 50
-batch_size = 128
+batch_size = 64
 initial_lr = 1e-3  # default Adam lr
 lr_halflife = 50000  # in iterations
 data_workers = 8
