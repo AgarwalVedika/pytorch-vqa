@@ -51,7 +51,7 @@ def run(net, loader, optimizer, tracker, train=False, prefix='', epoch=0):
     loss_tracker = tracker.track('{}_loss'.format(prefix), tracker_class(**tracker_params))
     acc_tracker = tracker.track('{}_acc'.format(prefix), tracker_class(**tracker_params))
 
-    log_softmax = nn.LogSoftmax().cuda()   ### nn.LogSoftmax(dim=1).cuda()
+    log_softmax = nn.LogSoftmax(dim=1).cuda()   ### nn.LogSoftmax().cuda()
     for v, q, a, idx, img_id, ques_id, q_len in tq:   #for v, q, a, idx, q_len in tq:
         var_params = {
             'volatile': not train,
@@ -86,9 +86,8 @@ def run(net, loader, optimizer, tracker, train=False, prefix='', epoch=0):
             answ.append(answer.view(-1))
             accs.append(acc.view(-1))
             idxs.append(idx.view(-1).clone())
-        #ipdb.set_trace()
+
         loss_tracker.append(loss.item())    #data[0])
-        # acc_tracker.append(acc.mean())
         for a in acc:
             acc_tracker.append(a.item())
         fmt = '{:.4f}'.format
