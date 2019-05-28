@@ -52,7 +52,7 @@ def run(net, loader, optimizer, tracker, train=False, prefix='', epoch=0):
     acc_tracker = tracker.track('{}_acc'.format(prefix), tracker_class(**tracker_params))
 
     log_softmax = nn.LogSoftmax().cuda()   ### nn.LogSoftmax(dim=1).cuda()
-    for v, q, a, idx, q_len in tq:
+    for v, q, a, idx, img_id, ques_id, q_len in tq:   #for v, q, a, idx, q_len in tq:
         var_params = {
             'volatile': not train,
             'requires_grad': False,
@@ -62,24 +62,25 @@ def run(net, loader, optimizer, tracker, train=False, prefix='', epoch=0):
         a = Variable(a.cuda(async=True), **var_params)
         q_len = Variable(q_len.cuda(async=True), **var_params)
 
-        out = net(v, q, q_len)
-        nll = -log_softmax(out)    ## taking softmax here
-
-        loss = (nll * a / 10).sum(dim=1).mean()
-        acc = utils.batch_accuracy(out.data, a.data).cpu()
-
         if train:
+            out = net(v, q, q_len)
+            nll = -log_softmax(out)  ## taking softmax here
+            loss = (nll * a / 10).sum(dim=1).mean()
+            acc = utils.batch_accuracy(out.data, a.data).cpu()
             global total_iterations
             update_learning_rate(optimizer, total_iterations)
 
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-            #ipdb.set_trace()
-
             total_iterations += 1
 
         else:
+            with torch.no_grad():
+                out = net(v, q, q_len)
+                nll = -log_softmax(out)  ## taking softmax here
+                loss = (nll * a / 10).sum(dim=1).mean()
+                acc = utils.batch_accuracy(out.data, a.data).cpu()   ### taking care of volatile=True for val
             # store information about evaluation of this minibatch
             _, answer = out.data.cpu().max(dim=1)
             answ.append(answer.view(-1))

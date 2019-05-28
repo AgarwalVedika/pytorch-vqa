@@ -28,7 +28,7 @@ from statistics import mean
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--model_type', default= 'with_attn', type=str)  ## 'with_attn' , 'no_attn'
-parser.add_argument('--edit_set', required=True, type=bool)  ## True False
+parser.add_argument('--edit_set', required=True, type=int)  ## 1 0
 
 def update_learning_rate(optimizer, iteration):
     lr = config.initial_lr * 0.5**(float(iteration) / config.lr_halflife)
@@ -58,10 +58,14 @@ def run(net, loader, edit_set_cmd):
             out = net(v, q, q_len)
 
             softmax_vc = softmax(out)   # torch.size(128,3000)
+            ipdb.set_trace() ## check type of softmax_vc- enforce it to torch16 here itself/ alse see what happens when np.16..
             acc = utils.batch_accuracy(out.data, a.data).cpu()   #torch.Size([128, 1])
+
+
         ###print(acc)  ## see what accuracy it prints  - prints the official vqa acc for every questions
         # store information about evaluation of this minibatch
         _, answer = out.data.cpu().max(dim=1)              ### torch.Size([128)  !!!! this is the predicted answer id!!!
+
 
         # answ.append(answer) #.view(-1))   # pred_ans_id
         # ss_vc.append(softmax_vc)       # #torch.Size([128, 3000])
@@ -79,7 +83,7 @@ def run(net, loader, edit_set_cmd):
             image_ids.append(img_id)
         else:
             image_ids.append(img_id.view(-1))
-
+        #ipdb.set_trace()
 
     # ss_vc = [item.tolist() for sublist in ss_vc for item in sublist]#torch.cat(ss_vc, dim=0).tolist()    ## softmax_vector
     # answ = [item.item() for sublist in answ for item in sublist]   #torch.cat(answ, dim=0).tolist()     ## pred_ans_id
@@ -89,22 +93,26 @@ def run(net, loader, edit_set_cmd):
     # print('accuracy is', mean(accs))
 
     ## second perhaps faster way
-    ss_vc = list(torch.cat(ss_vc, dim=0))      ## softmax_vectors
-    answ = list(torch.cat(answ, dim=0))          ## pred_ans_id
-    accs = list(torch.cat(accs, dim=0))          ## official vqa accurcay per question
-    ques_ids = list(torch.cat(ques_ids, dim=0))
+    ss_vc = torch.cat(ss_vc, dim=0)    ## softmax_vectors
+    answ = torch.cat(answ, dim=0)       ## pred_ans_id
+    accs = torch.cat(accs, dim=0) ## official vqa accurcay per question
+    ques_ids = torch.cat(ques_ids, dim=0)
     if edit_set_cmd:
         image_ids = [item for sublist in image_ids for item in sublist]
     else:
-        image_ids = list(torch.cat(image_ids, dim=0))
+        image_ids = torch.cat(image_ids, dim=0)
      ### might be string in edit config case
-    print('the accuracy is:', torch.mean(torch.stack(accs)) )       ### mean of entire accuracy vector # tensor(0.6015) for val set
+    print('the accuracy is:', torch.mean(accs))       ### mean of entire accuracy vector # tensor(0.6015) for val set
 
     return answ, image_ids, ques_ids, ss_vc
 
 
 def main(args):
     start_time = time.time()
+    if args.edit_set:
+        print('evaluating on edited VQA')
+    else:
+        print('evaluating original VQA')
 
     cudnn.benchmark = True
     output_qids_answers = []
@@ -135,14 +143,15 @@ def main(args):
     # output_qids_answers += [
     #     { 'ans_id': p, 'img_id': id,'ques_id':qid,'ss_vc': np.float32(softmax_vector)}## int(qid); softmax_vector.tolist()  because json does not recognize NumPy data types. Convert the number to a Python int before serializing the object:
     #     for p,id,qid, softmax_vector in zip(r[0],r[1], r[2], r[3])]                  ### ques-id in order as json files
+
     # second perhaps faster way
     if args.edit_set:
         output_qids_answers += [
-            { 'ans_id': p.item(), 'img_id': id,'ques_id':qid.item(),'ss_vc': np.float32(softmax_vector.tolist())}
+            { 'ans_id': p.item(), 'img_id': id,'ques_id':qid.item(),'ss_vc': np.float16(softmax_vector.tolist())}  #np.float32(softmax_vector).tolist()
             for p,id,qid, softmax_vector in zip(r[0],r[1], r[2], r[3])]
     else:
         output_qids_answers += [
-            { 'ans_id': p.item(), 'img_id': id.item(),'ques_id':qid.item(),'ss_vc': np.float32(softmax_vector.tolist())}
+            { 'ans_id': p.item(), 'img_id': id.item(),'ques_id':qid.item(),'ss_vc': np.float16(softmax_vector.tolist())}
             for p,id,qid, softmax_vector in zip(r[0],r[1], r[2], r[3])]
     with open(res_pkl, 'wb') as f:
         pickle.dump(output_qids_answers,f, pickle.HIGHEST_PROTOCOL)

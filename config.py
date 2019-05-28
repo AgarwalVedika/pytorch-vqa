@@ -18,7 +18,7 @@ results_no_attn_pth = './logs/val_no_attn_.pth'
 results_no_attn_pkl = './logs/val_no_attn_.pickle'
 
 ########################edited_vqa_
-# # # #** config_edit_vqa **
+# # #** config_edit_vqa **
 # #paths
 # qa_path = 'edit_vqa'  # directory containing the question and annotation jsons
 #
@@ -40,7 +40,7 @@ results_no_attn_pkl = './logs/val_no_attn_.pickle'
 # ## ** config_edit_vqa **
 
 #train.path
-model_path_no_attn = './models/no_attn.pth'
+model_path_no_attn = './models/no_attn_kernel3_stride1.pth'
 model_path_show_ask_attend_answer = './models/show_ask_attend_answer.pth'   ### the one initially with everything
 
 vocabulary_path = 'vocab.json'  # path where the used vocabularies for question and answers are saved to

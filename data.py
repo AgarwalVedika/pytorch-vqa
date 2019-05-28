@@ -174,9 +174,9 @@ class VQA(data.Dataset):
 
     def __len__(self):
         if self.answerable_only:
-            return len(self.answerable)   ### TODO vedika just dealing with 10
+            return len(self.answerable)   ### TODO vedika just dealing with 100
         else:
-            return len(self.questions)  ### TODO vedika just dealing with 10
+            return len(self.questions)  ### TODO vedika just dealing with 100
 
 
 # this is used for normalizing questions
