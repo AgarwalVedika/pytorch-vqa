@@ -105,11 +105,4 @@ if __name__ == '__main__':
     args = parser.parse_args()
     if args.edit_set:
         print('reminder to check if right config')
-    # print(args.edit_set)
-    # if args.work_on_edit == True:
-    #     with open("config_edit_set.yml", 'r') as ymlfile:
-    #         config = yaml.load(ymlfile)
-    # else:
-    #     with open("config_orig_set.yml", 'r') as ymlfile:
-    #         config = yaml.load(ymlfile)
     main(args)

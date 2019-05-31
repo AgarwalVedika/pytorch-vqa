@@ -23,20 +23,21 @@ class Net(nn.Module):
             embedding_tokens=embedding_tokens,
             embedding_features=300,
             lstm_features=question_features,
-            drop=0.5,
+            drop=0.5
         )
 
         self.cnn = build_cnn(
-            v_features=vision_features,
+            v_features=vision_features,  #(2048, 14, 14)
             out_features=4096, #1024, 512, 128
-            drop=0.5,
+            kernel_size=1,
+            bias=False
         )
 
         self.classifier = Classifier(
             in_features=glimpses * vision_features + question_features,
             mid_features=1024,
             out_features=config.max_answers,  ## 3000
-            drop=0.5,
+            drop=0.5
         )
 
         for m in self.modules():
@@ -58,28 +59,26 @@ class Net(nn.Module):
         return answer
 
 
+# def __init__(self, in_channels, out_channels, kernel_size, stride=1,
+#              padding=0, dilation=1, groups=1, bias=True):
+
+class build_cnn(nn.Module):
+    def __init__(self,  v_features, out_features, kernel_size=1, bias=True):
+        super(build_cnn, self).__init__()
+        self.v_conv = nn.Conv2d(v_features, out_features, kernel_size=kernel_size, bias=bias)    #kernel_size=1, bias=True (default)
+        #self.relu = nn.ReLU(inplace=True)
+    def forward(self, v):
+        v = self.v_conv(v)         ## not using drop on v at all!!!
+        #x = self.relu(v)
+        return v
+
+
 def flatten(input):
     n, c = input.size()[:2]
     # flatten the spatial dims into the third dim, since we don't need to care about how they are arranged
     input = input.view(n, 1, c, -1) # [n, 1, c, s]
     weighted_mean = input.sum(dim=-1) # [n, g, v]
     return weighted_mean.view(n, -1)
-
-# def __init__(self, in_channels, out_channels, kernel_size, stride=1,
-#              padding=0, dilation=1, groups=1, bias=True):
-
-
-class build_cnn(nn.Module):
-    def __init__(self,  v_features, out_features, drop=0.0):
-        super(build_cnn, self).__init__()
-        self.v_conv = nn.Conv2d(v_features, out_features, kernel_size=3, stride=1, bias=False)  # let self.lin take care of bias  #1 ,
-        self.drop = nn.Dropout(drop)
-        self.relu = nn.ReLU(inplace=True)
-        self.feat_dim = (2048, 14, 14),
-    def forward(self, v):
-        v = self.v_conv(self.drop(v))
-        x = self.relu(v)
-        return x
 
 
 class Classifier(nn.Sequential):

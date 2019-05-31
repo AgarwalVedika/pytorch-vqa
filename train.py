@@ -54,7 +54,7 @@ def run(net, loader, optimizer, tracker, train=False, prefix='', epoch=0):
     log_softmax = nn.LogSoftmax(dim=1).cuda()   ### nn.LogSoftmax().cuda()
     for v, q, a, idx, img_id, ques_id, q_len in tq:   #for v, q, a, idx, q_len in tq:
         var_params = {
-            'volatile': not train,
+            #'volatile': not train,  # taken care for val using: with torch.no_grad():
             'requires_grad': False,
         }
         v = Variable(v.cuda(async=True), **var_params)
@@ -142,8 +142,6 @@ def main(args):
     #checkpoint_file = os.path.join('./models/epoch_{}.pth'.format(i))
     #torch.save(net, checkpoint_file)
     #print('saving model to '+ checkpoint_file)
-
-
     print('time_taken:', time.time() - start_time)
 
 if __name__ == '__main__':

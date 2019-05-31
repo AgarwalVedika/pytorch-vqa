@@ -17,9 +17,9 @@ results_with_attn_pkl = './logs/val_with_attn_.pickle'
 results_no_attn_pth = './logs/val_no_attn_.pth'
 results_no_attn_pkl = './logs/val_no_attn_.pickle'
 
-########################edited_vqa_
-# # #** config_edit_vqa **
-# #paths
+#######################edited_vqa_
+# #** config_edit_vqa **
+#paths
 # qa_path = 'edit_vqa'  # directory containing the question and annotation jsons
 #
 # train_path = './edit_mscoco/train2014'  # directory of training images
@@ -40,7 +40,9 @@ results_no_attn_pkl = './logs/val_no_attn_.pickle'
 # ## ** config_edit_vqa **
 
 #train.path
-model_path_no_attn = './models/no_attn_kernel3_stride1.pth'
+model_path_no_attn = './models/no_attn_biasFalse_norelu.pth'                     ### originally bias False, drop=0.5
+# train E049: 100% 3396/3396 [06:55<00:00,  8.18it/s, acc=0.7492, loss=1.2638]
+# val E049: 100% 1675/1675 [03:24<00:00,  8.20it/s, acc=0.5203, loss=1.7672]
 model_path_show_ask_attend_answer = './models/show_ask_attend_answer.pth'   ### the one initially with everything
 
 vocabulary_path = 'vocab.json'  # path where the used vocabularies for question and answers are saved to
@@ -58,7 +60,7 @@ central_fraction = 0.875  # only take this much of the centre when scaling and c
 
 # training config
 epochs = 50
-batch_size = 64
+batch_size = 128
 initial_lr = 1e-3  # default Adam lr
 lr_halflife = 50000  # in iterations
 data_workers = 8

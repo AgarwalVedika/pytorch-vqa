@@ -24,10 +24,9 @@ import random
 random.seed(1234)
 import argparse
 import numpy as np
-from statistics import mean
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--model_type', default= 'with_attn', type=str)  ## 'with_attn' , 'no_attn'
+parser.add_argument('--model_type', required=True, type=str)  ## 'with_attn' , 'no_attn'
 parser.add_argument('--edit_set', required=True, type=int)  ## 1 0
 
 def update_learning_rate(optimizer, iteration):
@@ -57,7 +56,7 @@ def run(net, loader, edit_set_cmd):
         with torch.no_grad():
             out = net(v, q, q_len)
             softmax_vc = softmax(out)   # torch.size(128,3000)
-            ipdb.set_trace() ## check type of softmax_vc- enforce it to torch16 here itself/ alse see what happens when np.16..
+            #ipdb.set_trace() ## check type of softmax_vc- enforce it to torch16 here itself/ alse see what happens when np.16..
             acc = utils.batch_accuracy(out.data, a.data).cpu()   #torch.Size([128, 1]) official vqa acc for every questions
 
         # store information about evaluation of this minibatch
