@@ -66,11 +66,11 @@ class build_cnn(nn.Module):
     def __init__(self,  v_features, out_features, kernel_size=1, bias=True):
         super(build_cnn, self).__init__()
         self.v_conv = nn.Conv2d(v_features, out_features, kernel_size=kernel_size, bias=bias)    #kernel_size=1, bias=True (default)
-        #self.relu = nn.ReLU(inplace=True)
+        self.relu = nn.ReLU(inplace=True)
     def forward(self, v):
         v = self.v_conv(v)         ## not using drop on v at all!!!
-        #x = self.relu(v)
-        return v
+        x = self.relu(v)
+        return x
 
 
 def flatten(input):
