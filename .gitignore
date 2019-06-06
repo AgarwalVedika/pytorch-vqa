@@ -4,6 +4,7 @@ vqa
 preprocessed_data/
 resnet/
 mscoco
+logs_copy_stage3/
 edit_mscoco
 logs/
 logs1/

@@ -30,7 +30,7 @@ class Net(nn.Module):
             v_features=vision_features,  #(2048, 14, 14)
             out_features=4096, #1024, 512, 128
             kernel_size=1,
-            bias=False
+            bias=True
         )
 
         self.classifier = Classifier(
