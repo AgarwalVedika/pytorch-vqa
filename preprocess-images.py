@@ -93,7 +93,7 @@ def main(args):  # main(args):
 
             j = i + imgs.size(0)
             features[i:j, :, :] = out.data.cpu().numpy().astype('float16')
-            ipdb.set_trace()
+            #ipdb.set_trace()
             if args.edit_set == True:
                 coco_ids[i:j] = numpy.string_(ids)        ####TODO vedika  for edit set this is it  # for numpy.string_ dtype='S25'
             else:

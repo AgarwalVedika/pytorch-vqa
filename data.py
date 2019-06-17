@@ -250,9 +250,8 @@ class CocoImages(data.Dataset):
             id_to_filename[id] = filename     # {'000000177529_000000000062': 'COCO_val2014_000000177529_000000000062.jpg'}
         return id_to_filename
 
-    def __getitem__(self, id):#item):
-        #id = self.sorted_ids[item]   ### sorts it here -_- TODO vedika line 233 in class CocoImages-changed it myself
-
+    def __getitem__(self, item):
+        id = self.sorted_ids[item]   ### sorts it here -_- TODO vedika line 233 in class CocoImages-changed it myself
         path = os.path.join(self.path, self.id_to_filename[id])
         img = Image.open(path).convert('RGB')
 

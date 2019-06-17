@@ -70,7 +70,7 @@ def run(net, loader, edit_set_cmd):
             image_ids.append(img_id)
         else:
             image_ids.append(img_id.view(-1))
-
+            #ipdb.set_trace()
     ss_vc = torch.cat(ss_vc, dim=0)    ## softmax_vectors
     answ = torch.cat(answ, dim=0)       ## pred_ans_id
     accs = torch.cat(accs, dim=0) ## official vqa accurcay per question

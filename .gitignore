@@ -6,6 +6,7 @@ resnet/
 mscoco
 logs_copy_stage3/
 edit_mscoco
+edit_mscoco_flipped
 logs/
 logs1/
 models/
