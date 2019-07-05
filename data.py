@@ -14,19 +14,29 @@ import utils
 import ipdb
 import numpy as np
 
-def get_loader(train=False, val=False, test=False):
+def get_loader(train=False, val=False, test=False):   #TODO you need todo some chnages here, this here decides what is the data thta goes into loader while train/test
     """ Returns a data loader for the desired split """
     assert train + val + test == 1, 'need to set exactly one of {train, val, test} to True'
     split = VQA(
         utils.path_for(train=train, val=val, test=test, question=True),
         utils.path_for(train=train, val=val, test=test, answer=True),
-        config.preprocessed_path,     ## make changed here- for training on other...
+        config.preprocessed_path,     ## make changed here- in config file  #TODO you need todo some chnages here, this here decides what is the data thta goes into loader while train/test
         answerable_only=train
     )
+
+    # print()
+    # print('                                     WARNING                                 ')
+    # print('                                     WARNING                                 ')
+    # print('                                     WARNING                                 ')
+    # print ('PRESS c or continue only if the model is in TESTING procedure; NO SHUFFLE igven to data loader- during training you have to set it to train!')
+    # ipdb.set_trace()
+    # print()
+    # print()
+
     loader = torch.utils.data.DataLoader(
         split,
         batch_size=config.batch_size,
-        shuffle=train, #train,  # only shuffle the data in training #TODO vedika comment- good idea!
+        shuffle= train, #train,   #TODO vedika  you dont want to shuffle train during test!!  #train, #train,  # only shuffle the data in training #TODO vedika comment- good idea!
         pin_memory=True,
         num_workers=config.data_workers,
         collate_fn=collate_fn,
@@ -87,6 +97,7 @@ class VQA(data.Dataset):
 
     def _create_coco_id_to_index(self):
         """ Create a mapping from a COCO image id into the corresponding index into the h5 file """
+        #ipdb.set_trace()
         with h5py.File(self.image_features_path, 'r') as features_file:
             coco_ids = features_file['ids'][()]
         #ipdb.set_trace()

@@ -27,6 +27,7 @@ import numpy as np
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--model_type', required=True, type=str)  ## 'with_attn' , 'no_attn'
+parser.add_argument('--split', required=True, type=str)  ### train2014/val2014/test2015/
 parser.add_argument('--edit_set', required=True, type=int)  ## 1 0
 
 def update_learning_rate(optimizer, iteration):
@@ -43,7 +44,7 @@ def run(net, loader, edit_set_cmd):
     ques_ids = []
     softmax = nn.Softmax(dim=1).cuda()
     for v, q, a, idx, img_id, ques_id, q_len in tqdm(loader):  # image, ques to vocab mapped , answer, item (sth to help index shuffled data with), len_val
-
+        #ipdb.set_trace()
         var_params = {
             'volatile': False,
             'requires_grad': False,
@@ -94,7 +95,13 @@ def main(args):
 
     cudnn.benchmark = True
     output_qids_answers = []
-    val_loader = data.get_loader(val=True)            ## data shuffled only in train, so in order here
+
+    if args.split == 'train2014':
+        val_loader = data.get_loader(train=True)    #val=True)            ## data shuffled only in train
+    elif args.split == 'val2014':
+        val_loader = data.get_loader(val=True)
+    elif args.split == 'test2015':
+        val_loader = data.get_loader(test=True)
     #test_loader = data.get_loader(test=True)
 
     if args.model_type == 'no_attn':

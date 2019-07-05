@@ -15,8 +15,8 @@ import ipdb
 import numpy
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--split', required=True, type=str)  ### train2014/val2014/test2015/edit_val201
-parser.add_argument('--edit_set', required=True, type=bool)  ## True False
+parser.add_argument('--split', required=True, type=str)  ### train2014/val2014/test2015
+parser.add_argument('--edit_set', required=True, type=int)  ## 0/1
 
 class Net(nn.Module):
     def __init__(self):
@@ -104,5 +104,5 @@ def main(args):  # main(args):
 if __name__ == '__main__':
     args = parser.parse_args()
     if args.edit_set:
-        print('reminder to check if right config')
+        print('passed eidted_set, reminder to check if right config')
     main(args)
