@@ -4,50 +4,62 @@ import matplotlib; matplotlib #.use('agg')
 import matplotlib.pyplot as plt
 import config
 import ipdb
-
+import numpy as np
+import os
 def main():
 
-    res_val  = torch.load(config.val_path)
-    acc = res_val['accuracies']
+    ques_types= ['how many', 'is this a', 'is there a', 'what color is the', 'counting']
+    data_splits = ['orig_10', 'orig_all', 'orig_10_edit_10','orig_all_edit_10',  'orig_all_edit_all']
+    exp = 'finetuning_CNN_LSTM'
 
-    ipdb.set_trace()
+    plots_dir = os.path.join('/BS/vedika3/nobackup/pytorch-vqa/plots', exp)
+    os.makedirs(plots_dir, exist_ok=True)
+    for ques_type in ques_types:
 
-    path = config.model_path1
-    results = torch.load(path)
-    #
-    # ipdb > results.keys()
-    # dict_keys(['name', 'tracker', 'config', 'weights', 'eval', 'vocab'])
+        for data_split in data_splits:
+            path = '/BS/vedika3/nobackup/pytorch-vqa/models/'+ exp + '/' + ques_type + '/' + data_split + '/epoch_49.pth'
+            results = torch.load(path)
+            #
+            # ipdb > results.keys()
+            # dict_keys(['name', 'tracker', 'config', 'weights', 'eval', 'vocab'])
 
-    train_loss = torch.FloatTensor(results['tracker']['train_loss'])   ### train_loss, train_acc, val_loss, val_acc
-    train_loss = train_loss.mean(dim=1).numpy()
+            train_loss = torch.FloatTensor(results['tracker']['train_loss'])   ### train_loss, train_acc, val_loss, val_acc
+            train_loss = train_loss.mean(dim=1).numpy()
 
-    val_loss = torch.FloatTensor(results['tracker']['val_loss'])   ### train_loss, train_acc, val_loss, val_acc
-    val_loss = val_loss.mean(dim=1).numpy()
+            val_loss = torch.FloatTensor(results['tracker']['val_loss'])   ### train_loss, train_acc, val_loss, val_acc
+            val_loss = val_loss.mean(dim=1).numpy()
 
 
-    train_acc = torch.FloatTensor(results['tracker']['train_acc'])   ### train_loss, train_acc, val_loss, val_acc
-    train_acc = train_acc.mean(dim=1).numpy()
+            train_acc = torch.FloatTensor(results['tracker']['train_acc'])   ### train_loss, train_acc, val_loss, val_acc
+            train_acc = train_acc.mean(dim=1).numpy()
 
-    val_acc = torch.FloatTensor(results['tracker']['val_acc'])   ### train_loss, train_acc, val_loss, val_acc
-    val_acc = val_acc.mean(dim=1).numpy()
+            val_acc = torch.FloatTensor(results['tracker']['val_acc'])   ### train_loss, train_acc, val_loss, val_acc
+            val_acc = val_acc.mean(dim=1).numpy()
 
-    ipdb.set_trace()
 
-    plt.figure()
-    plt.plot(train_acc, color='blue', label='train_acc')
-    plt.plot(val_acc, color='green', label='val_acc')
-    plt.plot(train_loss, color='red', label='train_loss')
-    plt.plot(val_loss, color='cyan',label='val_loss')
-    plt.legend()
-    plt.show()
-    plt.savefig('train_val_acc_loss.png')
+            str_put = 'maximum val acc is {} at epoch {}'.format(np.sort(val_acc)[-1], np.argsort(val_acc)[-1]) + \
+            '\n maximum train acc is {} at epoch {}'.format(np.sort(train_acc)[-1], np.argsort(train_acc)[-1])
+
+            plt.figure(figsize=(10,10))
+            plt.plot(train_acc, color='blue', label='train_acc')
+            plt.plot(val_acc, color='green', label='val_acc')
+            plt.plot(train_loss, color='red', label='train_loss')
+            plt.plot(val_loss, color='cyan',label='val_loss')
+            plt.xlabel('number of epochs' + '\n' + str_put)
+            plt.title(exp + '_' + ques_type + '_' + data_split + 'train_val_acc_loss.png')
+            plt.legend()
+            plt.grid(True)
+            plt.tight_layout()
+            plt.show()
+
+            plt.savefig( plots_dir + '/' +  ques_type + '_' + data_split + 'train_val_acc_loss.png')
 
 
 if __name__ == '__main__':
     main()
 
 #
-# ipdb> import numpy as np
+# ipdb> import numpy as np    Show, Ask, Attend, Answer model
 # ipdb> np.argsort(val_acc)
 # array([ 0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 13, 12, 14, 15, 16,
 #        18, 17, 19, 20, 22, 21, 23, 24, 26, 25, 27, 28, 29, 30, 33, 31, 32,

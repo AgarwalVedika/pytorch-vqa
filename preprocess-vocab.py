@@ -1,7 +1,6 @@
 import json
 from collections import Counter
 import itertools
-
 import config
 import data
 import utils

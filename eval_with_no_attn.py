@@ -117,7 +117,7 @@ def main(args):
         res_pkl = os.path.join(config.results_with_attn_pkl)
 
     print('loading model from', model_path)
-    net.load_state_dict(torch.load(model_path)["weights"])
+    net.load_state_dict(torch.load(model_path)["weights"])   ### so here you load the weights, essentially the model
     print(net)
     net.eval()
     r = run(net, val_loader, args.edit_set)

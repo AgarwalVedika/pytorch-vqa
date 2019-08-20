@@ -8,9 +8,7 @@ import config
 
 
 class Net(nn.Module):
-    """ Re-implementation of ``Show, Ask, Attend, and Answer: A Strong Baseline For Visual Question Answering'' [0]
-
-    [0]: https://arxiv.org/abs/1704.03162
+    """ tweaking code to function as CNN_LSTM model now
     """
 
     def __init__(self, embedding_tokens):

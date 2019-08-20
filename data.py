@@ -8,40 +8,51 @@ import h5py
 import torch
 import torch.utils.data as data
 import torchvision.transforms as transforms
-
 import config
+
 import utils
 import ipdb
 import numpy as np
+import random
 
-def get_loader(train=False, val=False, test=False):   #TODO you need todo some chnages here, this here decides what is the data thta goes into loader while train/test
+
+# orig_edit_combine=1
+
+def get_loader(train=False, val=False, test=False ):   #TODO you need todo some changes here, this here decides what is the data thta goes into loader while train/test
     """ Returns a data loader for the desired split """
     assert train + val + test == 1, 'need to set exactly one of {train, val, test} to True'
     split = VQA(
         utils.path_for(train=train, val=val, test=test, question=True),
         utils.path_for(train=train, val=val, test=test, answer=True),
-        config.preprocessed_path,     ## make changed here- in config file  #TODO you need todo some chnages here, this here decides what is the data thta goes into loader while train/test
+        config.preprocessed_path,     ## make changed here- in config file  #TODO you need todo some changes here, this here decides what is the data thta goes into loader while train/test
         answerable_only=train
     )
 
-    # print()
-    # print('                                     WARNING                                 ')
-    # print('                                     WARNING                                 ')
-    # print('                                     WARNING                                 ')
-    # print ('PRESS c or continue only if the model is in TESTING procedure; NO SHUFFLE igven to data loader- during training you have to set it to train!')
-    # ipdb.set_trace()
-    # print()
-    # print()
+    if config.orig_edit_equal_batch:
+        batch_size_given = int(config.batch_size * config.orig_amt)
+    else:
+        batch_size_given = config.batch_size
 
     loader = torch.utils.data.DataLoader(
         split,
-        batch_size=config.batch_size,
+        batch_size=batch_size_given,
         shuffle= train, #train,   #TODO vedika  you dont want to shuffle train during test!!  #train, #train,  # only shuffle the data in training #TODO vedika comment- good idea!
         pin_memory=True,
         num_workers=config.data_workers,
         collate_fn=collate_fn,
     )
-    return loader
+    #ipdb.set_trace()    ## check what the loader is retunring here   #len(loader.dataset) = 8438 for what color is the- works correctly- so all good- so far
+    return split, loader
+
+
+def get_edit_train_batch(dataset, ques_id_batch, train=False, val=False, test=False):
+    # dataset = VQA(
+    #     utils.path_for(train=train, val=val, test=test, question=True),
+    #     utils.path_for(train=train, val=val, test=test, answer=True),
+    #     config.preprocessed_path,     ## make changed here- in config file  #TODO you need todo some changes here, this here decides what is the data thta goes into loader while train/test
+    #     answerable_only=train
+    # )
+    return dataset._get_corresponding_editIQA_batch(ques_id_batch)
 
 
 def collate_fn(batch):
@@ -76,9 +87,30 @@ class VQA(data.Dataset):
         # v
         self.image_features_path = image_features_path
         self.coco_id_to_index = self._create_coco_id_to_index()
+
         self.coco_ids = [q['image_id'] for q in questions_json['questions']]         ### so image_id retrieved from json files
         self.ques_ids = [q['question_id'] for q in questions_json['questions']]
         #print('coco_ids from json files', self.coco_ids)
+
+        if config.orig_edit_equal_batch:
+            self.orig_IQA_list = [idx for idx, q in enumerate(questions_json['questions']) if len(str(q['image_id']))!=25]
+            orig_IQA_list = [idx for idx, q in enumerate(questions_json['questions']) if len(str(q['image_id']))!=25]
+            edit_IQA_list = [idx for idx, q in enumerate(questions_json['questions']) if len(str(q['image_id'])) == 25]
+            assert len(orig_IQA_list) + len(edit_IQA_list) == len(questions_json['questions'])
+
+            orig_ques_ids = self.ques_ids[0:len(orig_IQA_list)]
+            edit_ques_ids = self.ques_ids[len(orig_IQA_list):]
+            from collections import defaultdict
+            self.orig_edit_qid = defaultdict(list)
+            for orig_id in orig_ques_ids:
+                for idx, edit_id in enumerate(edit_ques_ids):
+                    if orig_id ==edit_id:
+                        self.orig_edit_qid[orig_id].append(idx+len(orig_IQA_list))
+            print('length of original ids: {}, of which {} ids have corresponding edit'.format(len(orig_IQA_list), len(self.orig_edit_qid)))
+            # orig_ids_have_edit = list(self.orig_edit_qid.keys())
+            # orig_ids_have_no_edit =  set(orig_ques_ids) - set(orig_ids_have_edit)
+            # assert len(orig_ids_have_edit) + len(orig_ids_have_no_edit) == len(orig_ques_ids)
+            #ipdb.set_trace()   ## maybe you want to employ a sampler technique for data_loader abover for orig ids making sure in a batch- you have both orig_ids with edit/no_edit
 
         # only use questions that have at least one answer?
         self.answerable_only = answerable_only
@@ -97,22 +129,18 @@ class VQA(data.Dataset):
 
     def _create_coco_id_to_index(self):
         """ Create a mapping from a COCO image id into the corresponding index into the h5 file """
-        #ipdb.set_trace()
         with h5py.File(self.image_features_path, 'r') as features_file:
             coco_ids = features_file['ids'][()]
-        #ipdb.set_trace()
-        ###.set_trace() ### in _create_coco_od to index
         coco_id_to_index = {id: i for i, id in enumerate(coco_ids)}
         #print( 'coco_ids from features file', coco_ids)
-        #print(coco_id_to_index)
         return coco_id_to_index
 
     def _check_integrity(self, questions, answers):
         """ Verify that we are using the correct data """
+        #ipdb.set_trace()
         qa_pairs = list(zip(questions['questions'], answers['annotations']))
         assert all(q['question_id'] == a['question_id'] for q, a in qa_pairs), 'Questions not aligned with answers'
         assert all(q['image_id'] == a['image_id'] for q, a in qa_pairs), 'Image id of question and answer don\'t match'
-        #ipdb.set_trace()
         #assert questions['data_type'] == answers['data_type'], 'Mismatched data types'
         #assert questions['data_subtype'] == answers['data_subtype'], 'Mismatched data subtypes'
 
@@ -153,17 +181,44 @@ class VQA(data.Dataset):
             # forks for multiple works, every child would use the same file object and fail
             # Having multiple readers using different file objects is fine though, so we just init in here.
             self.features_file = h5py.File(self.image_features_path, 'r')
-        #print(np.where(self.coco_id_to_index.keys() == np.string_(image_id)))
-        #print('type of image_id ',  type(image_id))                                    # type of image_id  <class 'str'>
-        #print('type of image_id ',  type(np.string_(image_id)))                        # type of image_id  <class 'numpy.bytes_'>
-        #print('type of image_id ',  type(np.string_(image_id).astype(np.bytes_)))      # type of image_id  <class 'numpy.bytes_'>
-        if len(str(image_id)) == 25:                                    # TODO vedika dataset handling fix
-            index = self.coco_id_to_index[np.string_(image_id)]   ### handing of edited set
-        else:
-            index = self.coco_id_to_index[image_id]
+
+        # print(self.coco_id_to_index[np.string_(image_id)])
+        # print('type of image_id ',  type(image_id))                                    # type of image_id  <class 'str'>
+        # print('type of image_id ',  type(np.string_(image_id)))                        # type of image_id  <class 'numpy.bytes_'>
+        # print('type of image_id ',  type(np.string_(image_id).astype(np.bytes_)))      # type of image_id  <class 'numpy.bytes_'>
+
+        index = self.coco_id_to_index[np.string_(image_id)]
         dataset = self.features_file['features']
         img = dataset[index].astype('float32')
+
         return torch.from_numpy(img)
+
+    # def _get_corresponding_editIQA(self, ques_id):
+    #     if ques_id in self.orig_edit_qid.keys():
+    #         item = random.choice(self.orig_edit_qid[ques_id])     #random.sample(self.orig_edit_qid[ques_id],1) #TODO differene btwn random.sample and random.choice
+    #         return self.__getitem__(item)
+
+    def _get_corresponding_editIQA_batch(self, ques_ids_batch):
+        big_batch = [[] for list_min in range(7)]
+        for ques_id in ques_ids_batch:
+            #ipdb.set_trace()
+            ##v, q, a, item, image_id, ques_id, q_length = self._get_corresponding_editIQA(ques_id)
+            # batch = self._get_corresponding_editIQA(ques_id)
+            if int(ques_id) in self.orig_edit_qid.keys():
+                item = random.choice(self.orig_edit_qid[int(ques_id)])  # random.sample(self.orig_edit_qid[ques_id],1) #TODO differene btwn random.sample and random.choice
+                batch =  self.__getitem__(item)   ## batch[0,1,2] is tensor  [3,5,6] is not [4]- image_id
+                # batch[3] = torch.tensor(batch[3])
+                # batch[5] = torch.tensor(batch[5])
+                # batch[6] = torch.tensor(batch[6])
+                final_batch = [big_batch[i].append(batch[i]) for i in [0,1,2,4]]
+                final_batch = [big_batch[i].append(torch.tensor(batch[i])) for i in [3,5,6]]
+            #else:
+            #    return the original image and that itself? that way- enforcing consostency also holds- fair too i feel
+        if len(big_batch[4])!=0: # making sure that the list isn't empty- so that you can stack- big_batch[4] corresponds to image_id
+            v, q, a, item,  ques_id, q_length = [torch.stack(big_batch[i], dim=0) for i in [0,1,2,3,5,6]]
+            image_id = big_batch[4]
+        return v, q, a, item, image_id, ques_id, q_length
+
 
     def __getitem__(self, item):
         if self.answerable_only:                            #TODO vedika MAJOR fix- change this when training!!!
@@ -171,23 +226,30 @@ class VQA(data.Dataset):
             item = self.answerable[item]
 
         q, q_length = self.questions[item]
-
-
         a = self.answers[item]
-        image_id = self.coco_ids[item]
-        ques_id = self.ques_ids[item]
+        ques_id = self.ques_ids[item]   ## added by vedika
+        image_id = self.coco_ids[item]   ## added by vedika
+        if isinstance(image_id, int):
+            image_id = str(image_id).zfill(12)   # Dont know why it is still len(25) - had converted to 25!
         #print(image_id)
         v = self._load_image(image_id)
         # since batches are re-ordered for PackedSequence's, the original question order is lost
         # we return `item` so that the order of (v, q, a) triples can be restored if desired
         # without shuffling in the dataloader, these will be in the order that they appear in the q and a json's.
-        return v, q, a, item, image_id, ques_id, q_length    ############### appending the last two things- vedika!!
+        return v, q, a, item, image_id, ques_id, q_length    ############### appending ques_id and img_id- vedika!!
+
 
     def __len__(self):
         if self.answerable_only:
-            return len(self.answerable)   ### TODO vedika just dealing with 100
+            if config.orig_edit_equal_batch:
+                return len(self.answerable[0:len(self.orig_IQA_list)])
+            else:
+                return len(self.answerable)   ### TODO vedika just dealing with 100
         else:
-            return len(self.questions)  ### TODO vedika just dealing with 100
+            if config.orig_edit_equal_batch:
+                return len(self.questions[0:len(self.orig_IQA_list)])
+            else:
+                return len(self.questions)  ### TODO vedika just dealing with 100
 
 
 # this is used for normalizing questions
@@ -235,7 +297,7 @@ def prepare_answers(answers_json):
         yield list(map(process_punctuation, answer_list))
 
 
-class CocoImages(data.Dataset):
+class CocoImages(data.Dataset):    ## USAGE: ONLY IN PREPROCESSING IMAGES!!!
     """ Dataset for MSCOCO images located in a folder on the filesystem """
     def __init__(self, path, transform=None):
         super(CocoImages, self).__init__()
@@ -250,15 +312,20 @@ class CocoImages(data.Dataset):
         for filename in os.listdir(self.path):
             if not filename.endswith('.jpg'):
                 continue
-            #ipdb.set_trace()
-            if filename.split('_')[2] == filename.split('_')[-1]:  # TODO vedika dataset handling fix  ## in case of original set this holds!
-                id_and_extension = filename.split('_')[-1]     # TODO vedika check if len(str(image_id)) == 25:
-                id = int(id_and_extension.split('.')[0])
+
+            parts_name = filename.split('_')
+            # ['COCO', 'val2014', '000000177529.jpg']     # ['COCO', 'val2014', '000000177529', '000000000062.jpg']
+            if len(parts_name) == 4:  # 0,1,2,3
+                id_and_extension = parts_name[2] + '_' + parts_name[3]   # '000000177529_000000000062'
             else:
-                id_and_extension = filename.split('_')[-2] + '_' + filename.split('_')[-1]   ### to handle edited dataset
-                id = id_and_extension.split('.')[0]          #TODO vedika_change made  # 000000177529_000000000062
-            #ipdb.set_trace()
+                id_and_extension = parts_name[2]
+            id = id_and_extension.split('.')[0]
+
+            if len(id)!=25:               ## here i take care of storing every id as string of 25 letters- S25 fixed
+                id.zfill(25)
+
             id_to_filename[id] = filename     # {'000000177529_000000000062': 'COCO_val2014_000000177529_000000000062.jpg'}
+
         return id_to_filename
 
     def __getitem__(self, item):

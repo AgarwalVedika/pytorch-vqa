@@ -37,7 +37,7 @@ def batch_accuracy(predicted, true):
     Finally, we can combine all cases together with:
         min(agreeing * 0.3, 1)
     '''
-    return (agreeing * 0.3).clamp(max=1)
+    return (agreeing * 0.3333).clamp(max=1)   # changed from 0.3 to 0.333: one ans match, accuracy = 0.3333 not 0.3, these decimals create a big difference towards the end
 
 
 def path_for(train=False, val=False, test=False, question=False, answer=False):
@@ -56,6 +56,24 @@ def path_for(train=False, val=False, test=False, question=False, answer=False):
         fmt = '{3}_{1}_{2}_annotations.json'
     s = fmt.format(config.task, config.dataset, split, config.dset)
     return os.path.join(config.qa_path, s)
+
+
+def edit_path_for(train=False, val=False, test=False, question=False, answer=False):
+    assert train + val + test == 1
+    assert question + answer == 1
+    assert not (test and answer), 'loading answers from test split not supported'  #TODO if you want to eval on test, you need to implement loading of a VQA Dataset without given answers yourself
+    if train:
+        split = 'train2014'
+    elif val:
+        split = 'val2014'
+    else:
+        split = 'test2015'
+    if question:
+        fmt = '{3}_{0}_{1}_{2}_questions.json'
+    else:
+        fmt = '{3}_{1}_{2}_annotations.json'
+    s = fmt.format(config.task, config.dataset, split, config.dset)
+    return os.path.join(config.edit_qa_path, s)
 
 
 class Tracker:
