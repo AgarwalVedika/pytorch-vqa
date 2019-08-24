@@ -18,7 +18,7 @@ import random
 
 # orig_edit_combine=1
 
-def get_loader(train=False, val=False, test=False ):   #TODO you need todo some changes here, this here decides what is the data thta goes into loader while train/test
+def get_loader(train=False, val=False, test=False):   #TODO you need todo some changes here, this here decides what is the data thta goes into loader while train/test
     """ Returns a data loader for the desired split """
     assert train + val + test == 1, 'need to set exactly one of {train, val, test} to True'
     split = VQA(
@@ -28,7 +28,7 @@ def get_loader(train=False, val=False, test=False ):   #TODO you need todo some 
         answerable_only=train
     )
 
-    if config.orig_edit_equal_batch:
+    if train and config.orig_edit_equal_batch:
         batch_size_given = int(config.batch_size * config.orig_amt)
     else:
         batch_size_given = config.batch_size
@@ -42,17 +42,32 @@ def get_loader(train=False, val=False, test=False ):   #TODO you need todo some 
         collate_fn=collate_fn,
     )
     #ipdb.set_trace()    ## check what the loader is retunring here   #len(loader.dataset) = 8438 for what color is the- works correctly- so all good- so far
+
     return split, loader
 
 
-def get_edit_train_batch(dataset, ques_id_batch, train=False, val=False, test=False):
+
+def get_edit_train_batch(dataset, ques_id_batch, item_ids):
     # dataset = VQA(
     #     utils.path_for(train=train, val=val, test=test, question=True),
     #     utils.path_for(train=train, val=val, test=test, answer=True),
     #     config.preprocessed_path,     ## make changed here- in config file  #TODO you need todo some changes here, this here decides what is the data thta goes into loader while train/test
     #     answerable_only=train
-    # )
-    return dataset._get_corresponding_editIQA_batch(ques_id_batch)
+    #
+    if config.orig_edit_diff_ratio_naive:
+        return dataset._get_random_edit_batch_sample_rato_experiment()
+    if config.orig_edit_diff_ratio_naive_no_edit_ids_repeat:
+        return dataset._get_random_edit_batch_sample_rato_experiment_no_edit_ids_repeat()
+    if config.edit_loader_type == 'get_edits':
+        return dataset._get_corresponding_editIQA_batch(ques_id_batch)
+    if config.edit_loader_type == 'get_all_edits':
+        return dataset._get_all_corresponding_editIQA_batch(ques_id_batch)
+    elif config.edit_loader_type == 'get_more_edits_if_not_64':
+        return dataset._get_corresponding_editIQA_batch_get_more_edits_if_not_64(ques_id_batch)
+    elif config.edit_loader_type == 'get_edits_if_not_orig':
+        return dataset._get_corresponding_editIQA_batch_if_not_get_orig(ques_id_batch, item_ids)
+
+
 
 
 def collate_fn(batch):
@@ -92,21 +107,21 @@ class VQA(data.Dataset):
         self.ques_ids = [q['question_id'] for q in questions_json['questions']]
         #print('coco_ids from json files', self.coco_ids)
 
-        if config.orig_edit_equal_batch:
-            self.orig_IQA_list = [idx for idx, q in enumerate(questions_json['questions']) if len(str(q['image_id']))!=25]
-            orig_IQA_list = [idx for idx, q in enumerate(questions_json['questions']) if len(str(q['image_id']))!=25]
-            edit_IQA_list = [idx for idx, q in enumerate(questions_json['questions']) if len(str(q['image_id'])) == 25]
-            assert len(orig_IQA_list) + len(edit_IQA_list) == len(questions_json['questions'])
 
-            orig_ques_ids = self.ques_ids[0:len(orig_IQA_list)]
-            edit_ques_ids = self.ques_ids[len(orig_IQA_list):]
+        self.orig_IQA_list = [idx for idx, q in enumerate(questions_json['questions']) if len(str(q['image_id']))!=25]
+        self.edit_IQA_list = [idx for idx, q in enumerate(questions_json['questions']) if len(str(q['image_id'])) == 25]
+        assert len(self.orig_IQA_list) + len(self.edit_IQA_list) == len(questions_json['questions'])
+
+        if config.orig_edit_equal_batch:
+            orig_ques_ids = self.ques_ids[0:len(self.orig_IQA_list)]
+            edit_ques_ids = self.ques_ids[len(self.orig_IQA_list):]
             from collections import defaultdict
             self.orig_edit_qid = defaultdict(list)
             for orig_id in orig_ques_ids:
                 for idx, edit_id in enumerate(edit_ques_ids):
                     if orig_id ==edit_id:
-                        self.orig_edit_qid[orig_id].append(idx+len(orig_IQA_list))
-            print('length of original ids: {}, of which {} ids have corresponding edit'.format(len(orig_IQA_list), len(self.orig_edit_qid)))
+                        self.orig_edit_qid[orig_id].append(idx+len(self.orig_IQA_list))
+            print('length of original ids: {}, of which {} ids have corresponding edit'.format(len(self.orig_IQA_list), len(self.orig_edit_qid)))
             # orig_ids_have_edit = list(self.orig_edit_qid.keys())
             # orig_ids_have_no_edit =  set(orig_ques_ids) - set(orig_ids_have_edit)
             # assert len(orig_ids_have_edit) + len(orig_ids_have_no_edit) == len(orig_ques_ids)
@@ -116,6 +131,10 @@ class VQA(data.Dataset):
         self.answerable_only = answerable_only
         if self.answerable_only:
             self.answerable = self._find_answerable()
+            if config.load_only_orig_ids:
+                self.answerable_orig = [i for i in self.answerable if i< len(self.orig_IQA_list) ]
+            #ipdb.set_trace()
+
 
     @property
     def max_question_length(self):
@@ -152,6 +171,7 @@ class VQA(data.Dataset):
             # store the indices of anything that is answerable
             if answer_has_index:
                 answerable.append(i)
+        #ipdb.set_trace()
         return answerable
 
     def _encode_question(self, question):
@@ -193,35 +213,130 @@ class VQA(data.Dataset):
 
         return torch.from_numpy(img)
 
-    # def _get_corresponding_editIQA(self, ques_id):
-    #     if ques_id in self.orig_edit_qid.keys():
-    #         item = random.choice(self.orig_edit_qid[ques_id])     #random.sample(self.orig_edit_qid[ques_id],1) #TODO differene btwn random.sample and random.choice
-    #         return self.__getitem__(item)
+
+    def _get_corresponding_editIQA(self, item):
+        q, q_length = self.questions[item]
+        a = self.answers[item]
+        ques_id = self.ques_ids[item]
+        image_id = self.coco_ids[item]
+        if isinstance(image_id, int):
+            image_id = str(image_id).zfill(12)
+        v = self._load_image(image_id)
+        return v, q, a, item, image_id, ques_id, q_length
+
+
+    def _get_random_edit_batch_sample_rato_experiment(self):
+        big_batch = [[] for list_min in range(7)]
+        edit_batch_size = config.batch_size - int(config.orig_amt*config.batch_size)
+        chosen_64 = np.random.choice(self.edit_IQA_list , edit_batch_size, replace=False)
+        for item in chosen_64:
+            if item in self.answerable:
+                batch = self._get_corresponding_editIQA(item)  ## batch[0,1,2] is tensor  [3,5,6] is not [4]- image_id
+                final_batch = [big_batch[i].append(batch[i]) for i in [0, 1, 2, 4]]
+                final_batch = [big_batch[i].append(torch.tensor(batch[i])) for i in [3, 5, 6]]
+        v, q, a, item,  ques_id, q_length = [torch.stack(big_batch[i], dim=0) for i in [0,1,2,3,5,6]]
+        image_id = big_batch[4]
+        if len(self.orig_IQA_list) <  len(self.edit_IQA_list):
+            self.edit_IQA_list = list(set(self.edit_IQA_list) - set(chosen_64))
+        return v, q, a, item, image_id, ques_id, q_length
+
+
+
+    def _get_random_edit_batch_sample_rato_experiment_no_edit_ids_repeat(self):
+        big_batch = [[] for list_min in range(7)]
+        edit_batch_size = config.batch_size - int(config.orig_amt*config.batch_size)
+        chosen_64 = np.random.choice(self.edit_IQA_list , edit_batch_size, replace=False)
+        for item in chosen_64:
+            if item in self.answerable:
+                batch = self._get_corresponding_editIQA(item)  ## batch[0,1,2] is tensor  [3,5,6] is not [4]- image_id
+                final_batch = [big_batch[i].append(batch[i]) for i in [0, 1, 2, 4]]
+                final_batch = [big_batch[i].append(torch.tensor(batch[i])) for i in [3, 5, 6]]
+        v, q, a, item,  ques_id, q_length = [torch.stack(big_batch[i], dim=0) for i in [0,1,2,3,5,6]]
+        image_id = big_batch[4]
+        self.edit_IQA_list = list(set(self.edit_IQA_list) - set(chosen_64))
+        if len(self.edit_IQA_list) < edit_batch_size:
+            self.edit_IQA_list = [i for i in range(len(self.orig_IQA_list),len(self.coco_ids))]   ## so this is stored to what it was before
+        return v, q, a, item, image_id, ques_id, q_length
+
+
 
     def _get_corresponding_editIQA_batch(self, ques_ids_batch):
         big_batch = [[] for list_min in range(7)]
         for ques_id in ques_ids_batch:
-            #ipdb.set_trace()
-            ##v, q, a, item, image_id, ques_id, q_length = self._get_corresponding_editIQA(ques_id)
-            # batch = self._get_corresponding_editIQA(ques_id)
             if int(ques_id) in self.orig_edit_qid.keys():
                 item = random.choice(self.orig_edit_qid[int(ques_id)])  # random.sample(self.orig_edit_qid[ques_id],1) #TODO differene btwn random.sample and random.choice
-                batch =  self.__getitem__(item)   ## batch[0,1,2] is tensor  [3,5,6] is not [4]- image_id
-                # batch[3] = torch.tensor(batch[3])
-                # batch[5] = torch.tensor(batch[5])
-                # batch[6] = torch.tensor(batch[6])
-                final_batch = [big_batch[i].append(batch[i]) for i in [0,1,2,4]]
-                final_batch = [big_batch[i].append(torch.tensor(batch[i])) for i in [3,5,6]]
-            #else:
-            #    return the original image and that itself? that way- enforcing consostency also holds- fair too i feel
+                if item in self.answerable:
+                    batch =  self._get_corresponding_editIQA(item)   ## batch[0,1,2] is tensor  [3,5,6] is not [4]- image_id
+                    final_batch = [big_batch[i].append(batch[i]) for i in [0,1,2,4]]
+                    final_batch = [big_batch[i].append(torch.tensor(batch[i])) for i in [3,5,6]]
         if len(big_batch[4])!=0: # making sure that the list isn't empty- so that you can stack- big_batch[4] corresponds to image_id
             v, q, a, item,  ques_id, q_length = [torch.stack(big_batch[i], dim=0) for i in [0,1,2,3,5,6]]
             image_id = big_batch[4]
+            return v, q, a, item, image_id, ques_id, q_length
+        else:
+            return None
+
+
+
+    def _get_all_corresponding_editIQA_batch(self, ques_ids_batch):
+        big_batch = [[] for list_min in range(7)]
+        for ques_id in ques_ids_batch:
+            if int(ques_id) in self.orig_edit_qid.keys():
+                for item in self.orig_edit_qid[int(ques_id)]:
+                    if item in self.answerable:
+                        batch = self._get_corresponding_editIQA(item)  ## batch[0,1,2] is tensor  [3,5,6] is not [4]- image_id
+                        final_batch = [big_batch[i].append(batch[i]) for i in [0, 1, 2, 4]]
+                        final_batch = [big_batch[i].append(torch.tensor(batch[i])) for i in [3, 5, 6]]
+        if len(big_batch[4])!=0: # making sure that the list isn't empty- so that you can stack- big_batch[4] corresponds to image_id
+            v, q, a, item,  ques_id, q_length = [torch.stack(big_batch[i], dim=0) for i in [0,1,2,3,5,6]]
+            image_id = big_batch[4]
+            return v, q, a, item, image_id, ques_id, q_length
+        else:
+            return None
+
+
+
+    def _get_corresponding_editIQA_batch_get_more_edits_if_not_64(self, ques_ids_batch):
+        big_batch = [[] for list_min in range(7)]
+        while len(big_batch[4])!= config.batch_size - int(config.batch_size * config.orig_amt):  #TODO whule lop is super slow- some other way- think of it
+            for ques_id in ques_ids_batch:
+                if int(ques_id) in self.orig_edit_qid.keys():
+                    item = random.choice(self.orig_edit_qid[int(ques_id)])
+                    if item in self.answerable:
+                        batch = self._get_corresponding_editIQA(
+                            item)  ## batch[0,1,2] is tensor  [3,5,6] is not [4]- image_id
+                        final_batch = [big_batch[i].append(batch[i]) for i in [0, 1, 2, 4]]
+                        final_batch = [big_batch[i].append(torch.tensor(batch[i])) for i in [3, 5, 6]]
+                print(1)
+        #ipdb.set_trace()
+        v, q, a, item,  ques_id, q_length = [torch.stack(big_batch[i], dim=0) for i in [0,1,2,3,5,6]]
+        image_id = big_batch[4]
         return v, q, a, item, image_id, ques_id, q_length
 
 
+
+    def _get_corresponding_editIQA_batch_if_not_get_orig(self, ques_ids_batch, item_ids):
+        big_batch = [[] for list_min in range(7)]
+        for ques_id_idx, ques_id in enumerate(ques_ids_batch):
+            if int(ques_id) in self.orig_edit_qid.keys():
+                item = random.choice(self.orig_edit_qid[int(ques_id)])
+                ## batch[0,1,2] is tensor  [3,5,6] is not [4]- image_id
+            else:                                       ##return the original image and that itself? that way- enforcing consostency also holds- fair too i feel
+                item = item_ids[ques_id_idx]
+            if item in self.answerable:
+                batch = self._get_corresponding_editIQA(item)  ## batch[0,1,2] is tensor  [3,5,6] is not [4]- image_id
+                final_batch = [big_batch[i].append(batch[i]) for i in [0, 1, 2, 4]]
+                final_batch = [big_batch[i].append(torch.tensor(batch[i])) for i in [3, 5, 6]]
+        v, q, a, item,  ques_id, q_length = [torch.stack(big_batch[i], dim=0) for i in [0,1,2,3,5,6]]
+        image_id = big_batch[4]
+        ### IN THIS CASE: Q_LEN- SHOULD BE EXACT REPLICA [64] == [64]: EXCEPT item, IMAGE_ID, V: ques/ans/ques_id,q_len- just replicated- migth want to check that-
+        ## also sorting use a careful trick- as you would want to enforce the consistency on these
+        return v, q, a, item, image_id, ques_id, q_length
+
+
+
     def __getitem__(self, item):
-        if self.answerable_only:                            #TODO vedika MAJOR fix- change this when training!!!
+        if self.answerable_only:
             # change of indices to only address answerable questions
             item = self.answerable[item]
 
@@ -240,17 +355,16 @@ class VQA(data.Dataset):
 
 
     def __len__(self):
-        if self.answerable_only:
-            if config.orig_edit_equal_batch:
-                return len(self.answerable[0:len(self.orig_IQA_list)])
+        if self.answerable_only:    ### is the case for training
+            if config.load_only_orig_ids:
+                return len(self.answerable_orig)
             else:
-                return len(self.answerable)   ### TODO vedika just dealing with 100
+                return len(self.answerable)   ## returnsthose ids which have answer which is in our vocab
         else:
-            if config.orig_edit_equal_batch:
-                return len(self.questions[0:len(self.orig_IQA_list)])
-            else:
-                return len(self.questions)  ### TODO vedika just dealing with 100
-
+            # if config.load_only_orig_ids:
+            #     return len(self.questions[0:len(self.orig_IQA_list)])
+            # else:
+            return len(self.questions)   ## so this gives the entire list - all idx
 
 # this is used for normalizing questions
 _special_chars = re.compile('[^a-z0-9 ]*')

@@ -97,11 +97,11 @@ def main(args):
     output_qids_answers = []
 
     if args.split == 'train2014':
-        val_loader = data.get_loader(train=True)    #val=True)            ## data shuffled only in train
+        _, val_loader = data.get_loader(train=True)    #val=True)            ## data shuffled only in train
     elif args.split == 'val2014':
-        val_loader = data.get_loader(val=True)
+        _, val_loader = data.get_loader(val=True)
     elif args.split == 'test2015':
-        val_loader = data.get_loader(test=True)
+        _, val_loader = data.get_loader(test=True)
     #test_loader = data.get_loader(test=True)
 
     if args.model_type == 'no_attn':

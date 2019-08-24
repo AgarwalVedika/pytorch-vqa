@@ -26,7 +26,7 @@ import argparse
 import numpy as np
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--model_type', default= 'finetuning_SAAA', type=str)  ## 'with_attn' , 'no_attn'
+parser.add_argument('--model_type', default= 'finetuning_CNN_LSTM', type=str)  ## 'with_attn' , 'no_attn'
 
 
 def update_learning_rate(optimizer, iteration):
@@ -89,12 +89,13 @@ def main(args):
 
     elif args.model_type == 'finetuning_CNN_LSTM':
         net = nn.DataParallel(model2.Net(val_loader.dataset.num_tokens)).cuda()
-
+        print()
+        print('testing on ', config.test_data_split)
+        print()
         model_trained_data_splits = ['orig_10', 'orig_all', 'orig_10_edit_10','orig_all_edit_10',  'orig_all_edit_all']
         for model_trained_data_split in model_trained_data_splits:
             model_path_folder = os.path.join('./models/' + config.model_type + '/' + config.ques_type + '/' + model_trained_data_split)
-            model_path = os.path.join(model_path_folder, 'epoch_{}.pth'.format(str(config.ft_val_10[config.ques_type.replace(' ', '_') + '_' + model_trained_data_split])))
-
+            model_path = os.path.join(model_path_folder, 'epoch_{}.pth'.format(str(config.ft_val_10_naive_CNN_LSTM_edit_more15[config.ques_type.replace(' ', '_') + '_' + model_trained_data_split])))
             res_json_folder = os.path.join(config.ft_logs_folder)
             os.makedirs(res_json_folder, exist_ok=True)
             res_json = os.path.join(res_json_folder, 'results_fineuned_using_' + model_trained_data_split + '.json')
@@ -116,7 +117,9 @@ def main(args):
 
     elif args.model_type == 'finetuning_SAAA':
         net = nn.DataParallel(model.Net(val_loader.dataset.num_tokens)).cuda()
-
+        print()
+        print('testing on ', config.test_data_split)
+        print()
         model_trained_data_splits = ['orig_10', 'orig_all', 'orig_10_edit_10','orig_all_edit_10',  'orig_all_edit_all']
         for model_trained_data_split in model_trained_data_splits:
             model_path_folder = os.path.join('./models/' + config.model_type + '/' + config.ques_type + '/' + model_trained_data_split)
