@@ -1,5 +1,10 @@
 # Strong baseline for visual question answering
 
+1. Also includes now CNN+LSTM implementation (model2.py)
+2. different data loaders to support loading of edited images in original vqa batch
+3. ability to regulate orig and edit loss
+4. Enforcing consistency: additional losses(CrossEntropy, KL, MSE) between edit and orig IQA added  (Ref: Unsupervised Data Aug)
+
 This is a re-implementation of Vahid Kazemi and Ali Elqursh's paper [Show, Ask, Attend, and Answer: A Strong Baseline For Visual Question Answering][0] in [PyTorch][1].
 
 The paper shows that with a relatively simple model, using only common building blocks in Deep Learning, you can get better accuracies than the majority of previously published work on the popular [VQA v1][2] dataset.
