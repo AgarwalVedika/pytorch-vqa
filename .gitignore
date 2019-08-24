@@ -1,6 +1,7 @@
 __pycache__
 *.pyc
 vqa
+edit_vqa/
 preprocessed_data/
 resnet/
 mscoco
@@ -11,6 +12,8 @@ logs/
 logs1/
 models/
 finetuning_logs/
+**/finetuning_logs
+*.png
 plots/
 val_pkl_analysis.py
 .idea/

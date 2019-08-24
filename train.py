@@ -42,10 +42,8 @@ consistency_criterion_CE = nn.CrossEntropyLoss().cuda()
 def consistency_criterion_MSE(x, y):  # ((softmax_edit-softmax_orig)**2).sum(dim=1).mean() BETTER IMPLEMENT THIS
     return ((x - y) ** 2).sum(dim=1).mean()
 # ((consistency_criterion_MSE = nn.MSELoss().cuda() # this si wrong- divided by sum_square_loss(3000*edit_batch_size)
-consistency_criterion_MSE_avg_false = nn.MSELoss(reduction='sum').cuda()  # nn.MSELoss(size_average=False).cuda()   ==((softmax_edit-softmax_orig)**2).sum(dim=1).sum()
+consistency_criterion_MSE_avg_false = nn.MSELoss(reduction='sum').cuda()  # == nn.MSELoss(size_average=False).cuda()   ==((softmax_edit-softmax_orig)**2).sum(dim=1).sum()
 consistency_criterion_KL = nn.KLDivLoss(reduction='batchmean').cuda()
-
-
 
 
 def run(net, loader, optimizer, tracker, train=False, prefix='', epoch=0, dataset=None):
@@ -101,25 +99,21 @@ def run(net, loader, optimizer, tracker, train=False, prefix='', epoch=0, datase
             nll = -log_softmax(out)  ## taking softmax here     ## calculating  -log(p_pred)
             loss_1 = (nll * a / 10).sum(dim=1)     ### SO THIS COMPLETES CROSS ENTROPY : -p_true* log(p_pred) as  'a/10' does the role of being p_true  - ans has avlue 10 where its true
             loss = (nll * a / 10).sum(dim=1).mean()    ## mean of te batch #TODO- divide it into true and edit loss- which are resp being divided by the resp sizes
-
             #abc = torch.Tensor.cpu(ans[13])
             # abc[np.where(ans_13!=0)]
 
-            loc2 = {}
+            loc2 = {} ## mapping ques_ids to location indices
             for key in set(list(ques_id)):
                 loc2[int(key)] = [idx for idx, i in enumerate(list(ques_id)) if i == key]
-            loc3 = [key for key in loc2.keys() if len(loc2[key]) > 1]
+            loc3 = [key for key in loc2.keys() if len(loc2[key]) > 1]   ## those keys only whihc has two samples: edit and orig in our case
 
             all_true_ids = [idx for idx,i in enumerate(img_id) if len(i)==12]
-
             true_batch_order = [loc2[key][0] if len(img_id[loc2[key][0]])==12 else loc2[key][1] for key in loc3]
             edit_batch_order = [loc2[key][0] if len(img_id[loc2[key][0]])==25 else loc2[key][1] for key in loc3]    ## TODO only handles one edit case
 
             ### just checks to make sure correspondence between true_batch and edit_batch
             img_id_true = [img_id[i] for i in true_batch_order]   #TODO need not save it, can be done on the fly in lines 122-124
             img_id_edit = [img_id[i] for i in edit_batch_order]
-
-
             for i in range(len(true_batch_order)):
                 assert len(img_id_true[i]) < len(img_id_edit[i])
                 assert img_id_true[i] == img_id_edit[i][0:12]
@@ -128,15 +122,15 @@ def run(net, loader, optimizer, tracker, train=False, prefix='', epoch=0, datase
 
             if config.regulate_old_loss:
                 ## divide the loss .... loss = (loss_real/n_real) + (loss_fake/n_fake)
-                loss_1_orig = torch.stack([loss_1[i] for i in all_true_ids])
-                loss_1_orig_has_edit = torch.stack([loss_1[i] for i in true_batch_order])
-                loss_1_edit = torch.stack([loss_1[i] for i in edit_batch_order])
+                #loss_1_orig = torch.stack([loss_1[i] for i in all_true_ids])
+                #loss_1_orig_has_edit = torch.stack([loss_1[i] for i in true_batch_order])
+                #loss_1_edit = torch.stack([loss_1[i] for i in edit_batch_order])
                 loss_old = loss
                 loss_orig = torch.stack([loss_1[i] for i in all_true_ids]).mean()
                 loss_edit = torch.stack([loss_1[i] for i in edit_batch_order]).mean()    ## ==loss_1_edit.sum()/num_edit_samples
-                loss_e = loss_orig + (len(edit_batch_order)/len(all_true_ids))*loss_edit                #TODO tuning parameter now is num_edit_samples/num_true_samples
-                loss_5 = loss_orig + 0.5 * loss_edit
-                # bcd = np.array(torch.Tensor.cpu(loss_1_orig.detach()))
+                #loss_e = loss_orig + (len(edit_batch_order)/len(all_true_ids))*loss_edit                #TODO tuning parameter now is num_edit_samples/num_true_samples
+                #loss_5 = loss_orig + 0.5 * loss_edit
+                # bcd = np.array(torch.Tensor.cpu(loss_1_orig.detach()))                          #TODO loss_track implementation to save both loss_old, loss_orig, loss_edit
 
             if config.enforce_consistency:
                 softmax_out= just_softmax(out)
@@ -153,20 +147,19 @@ def run(net, loader, optimizer, tracker, train=False, prefix='', epoch=0, datase
                 consistency_loss_KL = consistency_criterion_KL(softmax_orig, softmax_edit)
                 consistency_loss_MSE = consistency_criterion_MSE(softmax_orig, softmax_edit)
 
-                ipdb.set_trace()
                 if config.regulate_old_loss:
                     loss = loss_orig + (config.lam_edit_loss*loss_edit) + (config.lam_CE*consistency_loss_CE) + (config.lam_KL*abs(consistency_loss_KL)) + (config.lam_MSE*consistency_loss_MSE)
                 else:
-                    loss = loss + (config.lam_CE*consistency_loss_CE) +  (config.lam_KL*abs(consistency_loss_KL)) + (config.lam_MSE*consistency_loss_MSE)
+                    loss_vqa = loss
+                    loss = loss_vqa + (config.lam_CE*consistency_loss_CE) +  (config.lam_KL*abs(consistency_loss_KL)) + (config.lam_MSE*consistency_loss_MSE)
 
+                # loss_track = {
+                #     'loss': loss.item(),
+                #     'loss_vqa': loss_vqa.item(),
+                #     'consistency batch loss_CE': consistency_loss_CE.item(), #if config.enforce_consistency else 0.0,
+                #     'consistency batch loss_MSE': consistency_loss_MSE.item(),
+                #     'consistency batch loss_KL': consistency_loss_KL.item() }
 
-                loss_track = {
-                    'loss': loss.item(),
-                    'consistency batch loss_CE': consistency_loss_CE.item(), #if config.enforce_consistency else 0.0,
-                    'consistency batch loss_MSE': consistency_loss_MSE.item(),
-                    'consistency batch loss_KL': consistency_loss_KL.item() }
-
-            ipdb.set_trace()
             acc = utils.batch_accuracy(out.data, a.data).cpu()
             global total_iterations
             update_learning_rate(optimizer, total_iterations)
@@ -189,10 +182,13 @@ def run(net, loader, optimizer, tracker, train=False, prefix='', epoch=0, datase
             # accs.append(acc.view(-1))
             # idxs.append(idx.view(-1).clone())
 
-        if config.enforce_cross_entropy and train:
-            loss_tracker.append(loss_track)    #data[0])
-        else:
-            loss_tracker.append(loss.item())
+        # if config.enforce_consistency and train:   # TODO
+        ##   File "train.py", line 192, in run
+                #tq.set_postfix(loss=fmt(loss_tracker.mean.value), acc=fmt(acc_tracker.mean.value))
+                    ##TypeError: unsupported format string passed to dict.__format__
+        #     loss_tracker.append(loss_track)    #data[0])
+
+        loss_tracker.append(loss.item())
         for a in acc:
             acc_tracker.append(a.item())
         fmt = '{:.4f}'.format

@@ -42,22 +42,39 @@ dataset = 'mscoco'
 ques_type = 'what color is the'  # ['how many', 'is this a', 'is there a', 'what color is the', 'counting']
 data_split = 'orig_10_edit_10'  # ['orig_10', 'orig_all', 'orig_10_edit_10','orig_all_edit_10',  'orig_all_edit_all']
 # #
-# # ###SETTING_2
+# # ###SETTING_5 enforcinng consistency- keeping regulating old loss as 0 here
 edit_loader_type = 'get_edits'  # 'get_more_edits_if_not_64' , get_edits_if_not_orig , get_edits , get_all_edits
 orig_amt = 0.66
 load_only_orig_ids = 1
-enforce_consistency = 1
-regulate_old_loss = 1
+
+regulate_old_loss = 0
 lam_edit_loss = 0.5
-lam_CE = 0.5
-lam_KL = 0.5
-lam_MSE = 0.5
-model_type =  'finetuning_CNN_LSTM_data_aug2_{}_origamt_{}'.format(edit_loader_type, orig_amt)           #'finetuning_CNN_LSTM'  #finetuning_CNN_LSTM_data_aug2
+
+enforce_consistency = 1
+lam_CE = 0.3
+lam_KL = 0
+lam_MSE = 0
+model_type =  'finetuning_CNN_LSTM_data_aug3_{}_origamt_{}_CE_{}_KL_{}_MSE_{}'.format(edit_loader_type, orig_amt, lam_CE, lam_KL, lam_MSE)           #'finetuning_CNN_LSTM'  #finetuning_CNN_LSTM_data_aug2
 orig_edit_equal_batch = 1
 orig_edit_diff_ratio_naive = 0
 orig_edit_diff_ratio_naive_no_edit_ids_repeat = 0
 trained_model_save_folder = './models/' + model_type  + '/' + ques_type  + '/' + data_split # os.path.join('./models', ques_type)
 qa_path = '/BS/vedika2/nobackup/thesis/mini_datasets_qa_CNN_finetune_training' + '/'+ ques_type + '/' + data_split  # directory containing the question and annotation jsons
+
+
+
+# # #
+# # # ###SETTING_2
+# edit_loader_type = 'get_edits'  # 'get_more_edits_if_not_64' , get_edits_if_not_orig , get_edits , get_all_edits
+# orig_amt = 0.66
+# load_only_orig_ids = 1
+# model_type =  'finetuning_CNN_LSTM_data_aug2_{}_origamt_{}'.format(edit_loader_type, orig_amt)           #'finetuning_CNN_LSTM'  #finetuning_CNN_LSTM_data_aug2
+# orig_edit_equal_batch = 1
+# orig_edit_diff_ratio_naive = 0
+# orig_edit_diff_ratio_naive_no_edit_ids_repeat = 0
+# trained_model_save_folder = './models/' + model_type  + '/' + ques_type  + '/' + data_split # os.path.join('./models', ques_type)
+# qa_path = '/BS/vedika2/nobackup/thesis/mini_datasets_qa_CNN_finetune_training' + '/'+ ques_type + '/' + data_split  # directory containing the question and annotation jsons
+
 
 
 # SETTING 3
