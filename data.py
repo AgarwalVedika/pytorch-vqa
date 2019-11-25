@@ -264,7 +264,7 @@ class VQA(data.Dataset):
         big_batch = [[] for list_min in range(7)]
         for ques_id in ques_ids_batch:
             if int(ques_id) in self.orig_edit_qid.keys():
-                item = random.choice(self.orig_edit_qid[int(ques_id)])  # random.sample(self.orig_edit_qid[ques_id],1) #TODO differene btwn random.sample and random.choice
+                item = random.choice(self.orig_edit_qid[int(ques_id)])
                 if item in self.answerable:
                     batch =  self._get_corresponding_editIQA(item)   ## batch[0,1,2] is tensor  [3,5,6] is not [4]- image_id
                     final_batch = [big_batch[i].append(batch[i]) for i in [0,1,2,4]]

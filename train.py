@@ -3,18 +3,14 @@ import os.path
 import os
 import math
 import json
-
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.autograd import Variable
 import torch.backends.cudnn as cudnn
 from tqdm import tqdm
-
 import numpy as np
 import config
-
-
 import data
 import model
 import model2   ## modeifed net to have no attention
@@ -50,7 +46,6 @@ def run(net, loader, optimizer, tracker, train=False, prefix='', epoch=0, datase
     """ Run an epoch over the given loader """
     if train:
         net.train()
-
         tracker_class, tracker_params = tracker.MovingMeanMonitor, {'momentum': 0.99}
     else:
         net.eval()
@@ -68,8 +63,10 @@ def run(net, loader, optimizer, tracker, train=False, prefix='', epoch=0, datase
         #  except image_id- everything is a tensor   ## [i[0].dtype for i in [v, ques, ans, idx,  ques_id, q_len]]
         ## [v, ques, ans, idx,  ques_id, q_len].dtype = [torch.float32, torch.int64, torch.float32, torch.int64, torch.int64, torch.int64]
 
+
         if (train and config.orig_edit_equal_batch) or (train and config.orig_edit_diff_ratio_naive) or (train and config.orig_edit_diff_ratio_naive_no_edit_ids_repeat):
             #edit_v, edit_q, edit_a, edit_idx, edit_img_id, edit_ques_id, edit_q_len = data.get_edit_train_loader(ques_id_batch=ques_id, train=True)
+            #ipdb.set_trace()
             edit_batch = data.get_edit_train_batch(dataset=dataset, ques_id_batch=ques_id, item_ids = idx)
             #[torch.float32, torch.int64, torch.float32, torch.int64, [torch.int64, torch.int64]]
 
@@ -101,68 +98,76 @@ def run(net, loader, optimizer, tracker, train=False, prefix='', epoch=0, datase
             loss = (nll * a / 10).sum(dim=1).mean()    ## mean of te batch #TODO- divide it into true and edit loss- which are resp being divided by the resp sizes
             #abc = torch.Tensor.cpu(ans[13])
             # abc[np.where(ans_13!=0)]
+            #ipdb.set_trace()
 
-            loc2 = {} ## mapping ques_ids to location indices
-            for key in set(list(ques_id)):
-                loc2[int(key)] = [idx for idx, i in enumerate(list(ques_id)) if i == key]
-            loc3 = [key for key in loc2.keys() if len(loc2[key]) > 1]   ## those keys only whihc has two samples: edit and orig in our case
 
-            all_true_ids = [idx for idx,i in enumerate(img_id) if len(i)==12]
-            true_batch_order = [loc2[key][0] if len(img_id[loc2[key][0]])==12 else loc2[key][1] for key in loc3]
-            edit_batch_order = [loc2[key][0] if len(img_id[loc2[key][0]])==25 else loc2[key][1] for key in loc3]    ## TODO only handles one edit case
+            if ('data_aug2' in config.model_type or 'data_aug3' in config.model_type) and config.edit_loader_type == 'get_edits':
+                loc2 = {} ## mapping ques_ids to location indices
+                for key in set(list(ques_id)):
+                    loc2[int(key)] = [idx for idx, i in enumerate(list(ques_id)) if i == key]
+                loc3 = [key for key in loc2.keys() if len(loc2[key]) > 1]   ## those keys only whihc has two samples: edit and orig in our case
 
-            ### just checks to make sure correspondence between true_batch and edit_batch
-            img_id_true = [img_id[i] for i in true_batch_order]   #TODO need not save it, can be done on the fly in lines 122-124
-            img_id_edit = [img_id[i] for i in edit_batch_order]
-            for i in range(len(true_batch_order)):
-                assert len(img_id_true[i]) < len(img_id_edit[i])
-                assert img_id_true[i] == img_id_edit[i][0:12]
+                all_true_ids = [idx for idx,i in enumerate(img_id) if len(i)==12]
+                true_batch_order = [loc2[key][0] if len(img_id[loc2[key][0]])==12 else loc2[key][1] for key in loc3]
+                edit_batch_order = [loc2[key][0] if len(img_id[loc2[key][0]])==25 else loc2[key][1] for key in loc3]    ## TODO only handles one edit case
 
-            assert sorted(set(true_batch_order) &  set(all_true_ids)) == sorted(set(true_batch_order))
+                ### just checks to make sure correspondence between true_batch and edit_batch
+                img_id_true = [img_id[i] for i in true_batch_order]   #TODO need not save it, can be done on the fly in lines 122-124
+                img_id_edit = [img_id[i] for i in edit_batch_order]
+                for i in range(len(true_batch_order)):
+                    assert len(img_id_true[i]) < len(img_id_edit[i])
+                    assert img_id_true[i] == img_id_edit[i][0:12]
 
-            if config.regulate_old_loss:
-                ## divide the loss .... loss = (loss_real/n_real) + (loss_fake/n_fake)
-                #loss_1_orig = torch.stack([loss_1[i] for i in all_true_ids])
-                #loss_1_orig_has_edit = torch.stack([loss_1[i] for i in true_batch_order])
-                #loss_1_edit = torch.stack([loss_1[i] for i in edit_batch_order])
-                loss_old = loss
-                loss_orig = torch.stack([loss_1[i] for i in all_true_ids]).mean()
-                loss_edit = torch.stack([loss_1[i] for i in edit_batch_order]).mean()    ## ==loss_1_edit.sum()/num_edit_samples
-                #loss_e = loss_orig + (len(edit_batch_order)/len(all_true_ids))*loss_edit                #TODO tuning parameter now is num_edit_samples/num_true_samples
-                #loss_5 = loss_orig + 0.5 * loss_edit
-                # bcd = np.array(torch.Tensor.cpu(loss_1_orig.detach()))                          #TODO loss_track implementation to save both loss_old, loss_orig, loss_edit
+                assert sorted(set(true_batch_order) &  set(all_true_ids)) == sorted(set(true_batch_order))
 
-            if config.enforce_consistency:
-                softmax_out= just_softmax(out)
-                softmax_out = Variable(softmax_out.cuda(async=True), **var_params)
-                softmax_orig = torch.stack([softmax_out[i] for i in true_batch_order])   # for orig softmax out
-                softmax_edit = torch.stack([softmax_out[i] for i in edit_batch_order])     ### for edit take- -log_softmax
-                nll_orig = torch.stack([nll[i] for i in true_batch_order])
-                nll_edit = torch.stack([nll[i] for i in edit_batch_order])
+                if config.regulate_old_loss:   ## TODO right now only for data_aug2 and data_aug3 techniques; for naive ratio mixing- need to do it separately
+                    ## divide the loss .... loss = (loss_real/n_real) + (loss_fake/n_fake)
+                    #loss_1_orig = torch.stack([loss_1[i] for i in all_true_ids])
+                    #loss_1_orig_has_edit = torch.stack([loss_1[i] for i in true_batch_order])
+                    #loss_1_edit = torch.stack([loss_1[i] for i in edit_batch_order])
+                    loss_old = loss
+                    loss_orig = torch.stack([loss_1[i] for i in all_true_ids]).mean()
+                    loss_edit = torch.stack([loss_1[i] for i in edit_batch_order]).mean()    ## ==loss_1_edit.sum()/num_edit_samples
+                    #loss_e = loss_orig + (len(edit_batch_order)/len(all_true_ids))*loss_edit                #TODO tuning parameter now is num_edit_samples/num_true_samples
+                    #loss_5 = loss_orig + 0.5 * loss_edit
+                    # bcd = np.array(torch.Tensor.cpu(loss_1_orig.detach()))                          #TODO loss_track implementation to save both loss_old, loss_orig, loss_edit
 
-                # consistency_loss_CE =  consistency_criterion_CE(softmax_edit, softmax_orig)  #RuntimeError: Expected object of scalar type Long but got scalar type Float for argument #2 'target'
-                consistency_loss_edit_orig = (nll_edit * softmax_orig).sum(dim=1).mean()   # naming convention- target is second
-                consistency_loss_orig_edit = (nll_orig * softmax_edit).sum(dim=1).mean()
-                consistency_loss_CE = (consistency_loss_edit_orig + consistency_loss_orig_edit)/2
-                consistency_loss_KL = consistency_criterion_KL(softmax_orig, softmax_edit)
-                consistency_loss_MSE = consistency_criterion_MSE(softmax_orig, softmax_edit)
+                if config.enforce_consistency:    # ony for data_aug3 strategy
+                    softmax_out= just_softmax(out)
+                    softmax_out = Variable(softmax_out.cuda(async=True), **var_params)
+                    softmax_orig = torch.stack([softmax_out[i] for i in true_batch_order])   # for orig softmax out
+                    softmax_edit = torch.stack([softmax_out[i] for i in edit_batch_order])     ### for edit take- -log_softmax
+                    nll_orig = torch.stack([nll[i] for i in true_batch_order])
+                    nll_edit = torch.stack([nll[i] for i in edit_batch_order])
 
-                if config.regulate_old_loss:
-                    loss = loss_orig + (config.lam_edit_loss*loss_edit) + (config.lam_CE*consistency_loss_CE) + (config.lam_KL*abs(consistency_loss_KL)) + (config.lam_MSE*consistency_loss_MSE)
-                else:
-                    loss_vqa = loss
-                    loss = loss_vqa + (config.lam_CE*consistency_loss_CE) +  (config.lam_KL*abs(consistency_loss_KL)) + (config.lam_MSE*consistency_loss_MSE)
+                    # consistency_loss_CE =  consistency_criterion_CE(softmax_edit, softmax_orig)  #RuntimeError: Expected object of scalar type Long but got scalar type Float for argument #2 'target'
+                    consistency_loss_edit_orig = (nll_edit * softmax_orig).sum(dim=1).mean()   # softmax(orig)* log_softmax(edit)
+                    consistency_loss_orig_edit = (nll_orig * softmax_edit).sum(dim=1).mean()   # softmax(edit)* log_softmax(orig)
+                    if config.old_CE :
+                        consistency_loss_CE = (consistency_loss_edit_orig + consistency_loss_orig_edit)/2
+                    else:
+                        consistency_loss_CE = consistency_loss_edit_orig
+                    consistency_loss_KL = consistency_criterion_KL(softmax_orig, softmax_edit)
+                    consistency_loss_MSE = consistency_criterion_MSE(softmax_orig, softmax_edit)
 
-                # loss_track = {
-                #     'loss': loss.item(),
-                #     'loss_vqa': loss_vqa.item(),
-                #     'consistency batch loss_CE': consistency_loss_CE.item(), #if config.enforce_consistency else 0.0,
-                #     'consistency batch loss_MSE': consistency_loss_MSE.item(),
-                #     'consistency batch loss_KL': consistency_loss_KL.item() }
+                    if config.regulate_old_loss:
+                        loss = loss_orig + (config.lam_edit_loss*loss_edit) + (config.lam_CE*consistency_loss_CE) + (config.lam_KL*abs(consistency_loss_KL)) + (config.lam_MSE*consistency_loss_MSE)
+                    else:
+                        loss_vqa = loss
+                        loss = loss_vqa + (config.lam_CE*consistency_loss_CE) +  (config.lam_KL*abs(consistency_loss_KL)) + (config.lam_MSE*consistency_loss_MSE)
+
+                    # loss_track = {
+                    #     'loss': loss.item(),
+                    #     'loss_vqa': loss_vqa.item(),
+                    #     'consistency batch loss_CE': consistency_loss_CE.item(), #if config.enforce_consistency else 0.0,
+                    #     'consistency batch loss_MSE': consistency_loss_MSE.item(),
+                    #     'consistency batch loss_KL': consistency_loss_KL.item() }
 
             acc = utils.batch_accuracy(out.data, a.data).cpu()
             global total_iterations
             update_learning_rate(optimizer, total_iterations)
+
+            #ipdb.set_trace()
 
             optimizer.zero_grad()
             loss.backward()
@@ -215,20 +220,33 @@ def main():
     if config.model_type == 'no_attn':
         net = nn.DataParallel(model2.Net(train_loader.dataset.num_tokens)).cuda()
         target_name = os.path.join(config.model_path_no_attn)
+
     elif config.model_type == 'with_attn':
         net = nn.DataParallel(model.Net(train_loader.dataset.num_tokens)).cuda()
         target_name = os.path.join(config.model_path_show_ask_attend_answer)
 
     elif 'finetuning_CNN_LSTM' in config.model_type:
         #ipdb.set_trace()
-        net = nn.DataParallel(model2.Net(val_loader.dataset.num_tokens)).cuda()
+        net = nn.DataParallel(model2.Net(train_loader.dataset.num_tokens)).cuda()
         model_path = os.path.join(config.model_path_no_attn)
         net.load_state_dict(torch.load(model_path)["weights"])   ## SO LOAD  THE MODEL HERE- WE WANT TO START FINETUNING FROM THE BEST WE HAVE
         target_name = os.path.join(config.trained_model_save_folder)    # so this will store the models
         os.makedirs(target_name, exist_ok=True)
 
+    elif 'data_aug_CNN_LSTM' in config.model_type:
+        #ipdb.set_trace()
+        net = nn.DataParallel(model2.Net(train_loader.dataset.num_tokens)).cuda()
+        target_name = os.path.join(config.trained_model_save_folder)    # so this will store the models
+        os.makedirs(target_name, exist_ok=True)
+
+    elif 'data_aug_SAAA' in config.model_type:
+        #ipdb.set_trace()
+        net = nn.DataParallel(model.Net(train_loader.dataset.num_tokens)).cuda()
+        target_name = os.path.join(config.trained_model_save_folder)    # so this will store the models
+        os.makedirs(target_name, exist_ok=True)
+
     elif 'finetuning_SAAA' in config.model_type:
-        net = nn.DataParallel(model.Net(val_loader.dataset.num_tokens)).cuda()
+        net = nn.DataParallel(model.Net(train_loader.dataset.num_tokens)).cuda()
         model_path = os.path.join(config.model_path_show_ask_attend_answer)
         net.load_state_dict(torch.load(model_path)["weights"])   ## SO LOAD  THE MODEL HERE- WE WANT TO START FINETUNING FROM THE BEST WE HAVE
         target_name = os.path.join(config.trained_model_save_folder)    # so this will store the models

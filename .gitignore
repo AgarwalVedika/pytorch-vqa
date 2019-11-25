@@ -11,9 +11,11 @@ edit_mscoco_flipped
 logs/
 logs1/
 models/
+plots/
 finetuning_logs/
 **/finetuning_logs
 *.png
+*.yml
 plots/
 val_pkl_analysis.py
 .idea/
