@@ -50,8 +50,18 @@ class Net(nn.Module):
         #ipdb.set_trace()   ### here ipdb.set_trace works!!!
         q = self.text(q, list(q_len.data))  # torch.Size([64, 1024])
         v = v / (v.norm(p=2, dim=1, keepdim=True).expand_as(v) + 1e-8)     #torch.Size([64, 2048, 14, 14])
+
+
+
         v = self.cnn(v)
-        v_flat = flatten(v)  ## torch.Size([64, 4096])
+        v_flat = flatten(v)  ## torch.Size([64, 4096]) => all these 4096 features- you do a weighted mean on it- so you finally have one number
+        if config.vis_attention:
+            print(v.shape)
+            my_index = torch.argmax(v_flat, dim=1)  # then for attn map- i pick the one with highest value
+            home = v[71][my_index[71]]
+            plot_attn = torch.nn.functional.softmax(home)
+
+        ipdb.set_trace()
         combined = torch.cat([v_flat, q], dim=1)
         answer = self.classifier(combined)  ## torch.Size([64, 3000])
         return answer

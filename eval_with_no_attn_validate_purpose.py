@@ -26,7 +26,7 @@ import argparse
 import numpy as np
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--model_type', default= 'finetuning_SAAA', type=str)  ## 'with_attn' , 'no_attn'
+parser.add_argument('--model_type', default= 'with_attn', type=str)  ## 'with_attn' , 'no_attn' ,  'finetuning_SAAA'
 
 
 
@@ -58,13 +58,20 @@ def run(net, loader, edit_set_cmd):
         q_len = Variable(q_len.cuda(async=True), **var_params)  ### len of question
 
         with torch.no_grad():
-            out = net(v, q, q_len)
+            if config.vis_attention:
+                out =
+            else:
+                out = net(v, q, q_len)
             softmax_vc = softmax(out)   # torch.size(128,3000)
             #ipdb.set_trace() ## check type of softmax_vc- enforce it to torch16 here itself/ alse see what happens when np.16..
             acc = utils.batch_accuracy(out.data, a.data).cpu()   #torch.Size([128, 1]) official vqa acc for every questions
 
         # store information about evaluation of this minibatch
         _, answer = out.data.cpu().max(dim=1)              ### torch.Size([128)  !!!! this is the predicted answer id!!!
+
+
+
+        ipdb.set_trace()
         answ.append(answer.view(-1))   # pred_ans_id
         ss_vc.append(softmax_vc)       # #torch.Size([128, 3000])
         accs.append(acc.view(-1))      # official vqa accurcay per question

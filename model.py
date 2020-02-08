@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.nn.init as init
 from torch.nn.utils.rnn import pack_padded_sequence
+import ipdb
 
 import config
 
@@ -47,14 +48,40 @@ class Net(nn.Module):
 
     def forward(self, v, q, q_len):
         q = self.text(q, list(q_len.data))
-
         v = v / (v.norm(p=2, dim=1, keepdim=True).expand_as(v) + 1e-8)
         a = self.attention(v, q)
+
+        if config.vis_attention:
+            print(a.shape)
+            att_activation = torch.nn.functional.softmax(a)
+            if config.qa_path == '/BS/vedika2/nobackup/thesis/CVPR_REBUTTAL_JSON/orig_qa':
+                if config.fintuned_model_test:
+                    assert 'finetuning' in  config.model_path_show_ask_attend_answer
+                    saaa_vqa = '/BS/vedika3/nobackup/pytorch-vqa/cvpr_rebuttal_finetuned_SAAA_orig_vqa_attention.pickle'
+                else:
+                    saaa_vqa = '/BS/vedika3/nobackup/pytorch-vqa/cvpr_rebuttal_SAAA_orig_vqa_attention.pickle'
+            elif config.qa_path == '/BS/vedika2/nobackup/thesis/CVPR_REBUTTAL_JSON/edit_qa':
+                if config.fintuned_model_test:
+                    assert 'finetuning' in config.model_path_show_ask_attend_answer
+                    saaa_vqa = '/BS/vedika3/nobackup/pytorch-vqa/cvpr_rebuttal_finetuned_SAAA_edit_vqa_attention.pickle'
+                else:
+                    saaa_vqa = '/BS/vedika3/nobackup/pytorch-vqa/cvpr_rebuttal_SAAA_edit_vqa_attention.pickle'
+
+            import pickle
+            with open(saaa_vqa, 'wb') as f:
+                pickle.dump(att_activation, f)
+            ipdb.set_trace()
+
         v = apply_attention(v, a)
 
         combined = torch.cat([v, q], dim=1)
         answer = self.classifier(combined)
+
         return answer
+
+
+
+
 
 
 class Classifier(nn.Sequential):

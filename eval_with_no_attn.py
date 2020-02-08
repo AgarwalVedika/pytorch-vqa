@@ -26,16 +26,16 @@ import argparse
 import numpy as np
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--model_type', required=True, type=str)  ## 'with_attn' , 'no_attn'
-parser.add_argument('--split', required=True, type=str)  ### train2014/val2014/test2015/
-parser.add_argument('--edit_set', required=True, type=int)  ## 1 0
+parser.add_argument('--model_type', default='with_attn', type=str)  ## 'with_attn' , 'no_attn'
+parser.add_argument('--split', default='val2014', type=str)  ### train2014/val2014/test2015/
+parser.add_argument('--edit_set', default=1, type=int)  ## 1 0
 
 def update_learning_rate(optimizer, iteration):
     lr = config.initial_lr * 0.5**(float(iteration) / config.lr_halflife)
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
 
-def run(net, loader, edit_set_cmd):
+def run(net, loader, edit_set_cmd, model_name):
     """ Run an epoch over the given loader """
     answ = []
     accs = []
@@ -67,14 +67,44 @@ def run(net, loader, edit_set_cmd):
         accs.append(acc.view(-1))      # official vqa accurcay per question
         ques_ids.append(ques_id.view(-1))
 
+        if config.vis_attention:
+            output_qids_answers = []
+            if config.fintuned_model_test:
+                model_name = 'finetuned_' + model_name
+            if edit_set_cmd:
+                saaa_vqa_ans_q_id = '/BS/vedika3/nobackup/pytorch-vqa/cvpr_rebuttal_' + model_name + '_edit_vqa_ans_q_id.pickle'
+                print(img_id)
+                ipdb.set_trace()
+                output_qids_answers += [
+                    {'ans_id': p,  'ques_id': qid, 'accuracy': acc}
+                    for p,  qid, acc in zip(answ, ques_ids, accs)]
+            else:
+                saaa_vqa_ans_q_id = '/BS/vedika3/nobackup/pytorch-vqa/cvpr_rebuttal_' + model_name + '_orig_vqa_ans_q_id.pickle'
+                print(img_id)
+                ipdb.set_trace()
+                output_qids_answers += [
+                    {'ans_id': p,  'ques_id': qid, 'accuracy': acc}
+                    for p,  qid, acc in zip(answ, ques_ids, accs)]
+
+            with open(saaa_vqa_ans_q_id, 'wb') as f:
+                pickle.dump(output_qids_answers, f, pickle.HIGHEST_PROTOCOL)
+
+            exit()
+
+
+
         if edit_set_cmd:
             image_ids.append(img_id)
         else:
             image_ids.append(img_id.view(-1))
-            #ipdb.set_trace()
+
+
+
+
     ss_vc = torch.cat(ss_vc, dim=0)    ## softmax_vectors
     answ = torch.cat(answ, dim=0)       ## pred_ans_id
     accs = torch.cat(accs, dim=0) ## official vqa accurcay per question
+
     ques_ids = torch.cat(ques_ids, dim=0)
     if edit_set_cmd:
         image_ids = [item for sublist in image_ids for item in sublist]
@@ -82,6 +112,10 @@ def run(net, loader, edit_set_cmd):
         image_ids = torch.cat(image_ids, dim=0)
      ### might be string in edit config case
     print('the accuracy is:', torch.mean(accs))       ### mean of entire accuracy vector # tensor(0.6015) for val set
+
+
+
+
 
     return answ, image_ids, ques_ids, ss_vc
 
@@ -109,18 +143,20 @@ def main(args):
         model_path = os.path.join(config.model_path_no_attn)
         results_file = os.path.join(config.results_no_attn_pth)
         res_pkl = os.path.join(config.results_no_attn_pkl)
+        MODEL_name = 'CNN_LSTM'
 
     elif args.model_type == 'with_attn':
         net = nn.DataParallel(model.Net(val_loader.dataset.num_tokens)).cuda()
         model_path = os.path.join(config.model_path_show_ask_attend_answer)
         results_file = os.path.join(config.results_with_attn_pth)
         res_pkl = os.path.join(config.results_with_attn_pkl)
+        MODEL_name = 'SAAA'
 
     print('loading model from', model_path)
     net.load_state_dict(torch.load(model_path)["weights"])   ### so here you load the weights, essentially the model
     print(net)
     net.eval()
-    r = run(net, val_loader, args.edit_set)
+    r = run(net, val_loader, args.edit_set, MODEL_name)
 
     print('saving results to '+ res_pkl )
 

@@ -112,6 +112,7 @@ class VQA(data.Dataset):
         self.edit_IQA_list = [idx for idx, q in enumerate(questions_json['questions']) if len(str(q['image_id'])) == 25]
         assert len(self.orig_IQA_list) + len(self.edit_IQA_list) == len(questions_json['questions'])
 
+
         if config.orig_edit_equal_batch:
             orig_ques_ids = self.ques_ids[0:len(self.orig_IQA_list)]
             edit_ques_ids = self.ques_ids[len(self.orig_IQA_list):]
@@ -134,6 +135,9 @@ class VQA(data.Dataset):
             if config.load_only_orig_ids:
                 self.answerable_orig = [i for i in self.answerable if i< len(self.orig_IQA_list) ]
             #ipdb.set_trace()
+
+
+
 
 
     @property

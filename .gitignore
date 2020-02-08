@@ -16,6 +16,9 @@ finetuning_logs/
 **/finetuning_logs
 *.png
 *.yml
+*.png
+*.pdf
+*.pickle
 plots/
 val_pkl_analysis.py
 .idea/

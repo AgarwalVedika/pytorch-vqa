@@ -180,6 +180,10 @@ test_data_split = 'edit_10' #['orig_90_10',  'orig_90_all', 'edit_10', 'edit_all
 # paths
 qa_path = '/BS/vedika2/nobackup/thesis/mini_datasets_qa_CNN_finetune_testing' + '/'+ ques_type + '/' + test_data_split  # directory containing the question and annotation jsons- same for 0.1_0.0
 
+
+
+
+
 # #
 # ## debugging- so testing on original set that was used for training
 # ques_type = 'is this a'  # ['how many', 'is this a', 'is there a', 'what color is the', 'counting']
@@ -190,15 +194,30 @@ qa_path = '/BS/vedika2/nobackup/thesis/mini_datasets_qa_CNN_finetune_testing' + 
 # #
 #
 
-# # #
-# # ** config_orig_vqa **
-# # paths
-# qa_path = 'vqa'  # directory containing the question and annotation jsons
-# ##eval.py
-# results_with_attn_pth = './logs/train_with_attn_.pth'                          ### change this!! train/val/test!
-# results_with_attn_pkl = './logs/train_with_attn_.pickle'
-# results_no_attn_pth = './logs/train_no_attn_.pth'
-# results_no_attn_pkl = './logs/train_no_attn_.pickle'
+# #
+# ** config_orig_vqa **
+# paths
+qa_path = 'vqa'  # directory containing the question and annotation jsons
+##eval.py
+results_with_attn_pth = './logs/train_with_attn_.pth'                          ### change this!! train/val/test!
+results_with_attn_pkl = './logs/train_with_attn_.pickle'
+results_no_attn_pth = './logs/train_no_attn_.pth'
+results_no_attn_pkl = './logs/train_no_attn_.pickle'
+
+
+
+
+# CVPR_rebuttal
+cvpr_rebuttal_heatmap = 1
+vis_attention =1
+fintuned_model_test = 1
+#qa_path =  '/BS/vedika2/nobackup/thesis/CVPR_REBUTTAL_JSON/orig_qa'   # orig IQA for cvpr rebuttal- selected examples
+qa_path =  '/BS/vedika2/nobackup/thesis/CVPR_REBUTTAL_JSON/edit_qa'    # edit IQA for cvpr rebuttal- selected examples
+model_path_no_attn = '/BS/vedika3/nobackup/pytorch-vqa/models/finetuning_CNN_LSTM/0.1_0.0/orig_all_edit_10/epoch_3.pth'
+model_path_show_ask_attend_answer = '/BS/vedika3/nobackup/pytorch-vqa/models/finetuning_SAAA/0.1_0.0/orig_all_edit_10/epoch_0.pth'   ### finetuned with overall
+## to see hwhat epoch to use: go here:   contains for each ques type/overall- finetuning and data_aug comparisons:
+# /BS/vedika2/nobackup/thesis/code/SNMN_analysis_codes/CVPR_final_plot_ques_types_final_plots_5_horizontal_relative_to_baseline_fientuned.ipynb
+# run eval_with_no_attn.PY
 
 
 
